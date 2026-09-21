@@ -1,0 +1,14 @@
+.DS_Store
+*.xcuserdata
+project.xcworkspace
+xcuserdata
+
+# SwiftPM
+.build/
+.swiftpm/
+
+# Test data generated files
+macosaix-modern/test/data/
+macosaix-modern/test/*.png
+macosaix-modern/test/*.jpg
+macosaix-modern/test/*.heic
