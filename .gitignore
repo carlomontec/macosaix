@@ -3,9 +3,12 @@
 project.xcworkspace
 xcuserdata
 
-# SwiftPM
+# SwiftPM & Builds
 .build/
 .swiftpm/
+build/
+*.app/
+MacOSaiX.app/
 
 # Test data generated files
 macosaix-modern/test/data/

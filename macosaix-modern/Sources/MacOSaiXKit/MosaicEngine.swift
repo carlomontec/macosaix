@@ -16,6 +16,12 @@ public final class MosaicEngine: @unchecked Sendable {
     public private(set) var mosaicSize: CGSize = .zero
     public private(set) var targetImage: CGImage?
     
+    public var isCancelled: Bool = false
+    public var isPaused: Bool = false
+    
+    /// Optional callback called on match updates (for live GUI rendering).
+    public var onTileUpdated: ((_ tileIndex: Int) -> Void)?
+    
     public init(
         shapeType: MacOSaiXShapeType,
         tilesAcross: Int,
@@ -34,7 +40,7 @@ public final class MosaicEngine: @unchecked Sendable {
         self.metric = metric
     }
     
-    /// Loads the target image and prepares all tile geometries, masks, and target snippets.
+    /// Loads the target image from a URL and prepares tile geometries, masks, and snippets.
     public func prepare(targetURL: URL) throws {
         let options: [CFString: Any] = [
             kCGImageSourceShouldCache: true
@@ -46,10 +52,17 @@ public final class MosaicEngine: @unchecked Sendable {
             throw NSError(domain: "MosaicEngine", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to load target image: \(targetURL.path)"])
         }
         
-        self.targetImage = img
-        self.mosaicSize = CGSize(width: img.width, height: img.height)
+        try prepare(with: img)
+    }
+    
+    /// Prepares tile geometries, masks, and snippets using an in-memory CGImage.
+    public func prepare(with image: CGImage) throws {
+        self.targetImage = image
+        self.mosaicSize = CGSize(width: image.width, height: image.height)
+        self.isCancelled = false
+        self.isPaused = false
         
-        // Generate tile shapes
+        // Generate tile shapes using battle-tested geometry formulas
         let geometries = MacOSaiXShapes.generateShapes(
             for: shapeType,
             mosaicSize: mosaicSize,
@@ -59,19 +72,20 @@ public final class MosaicEngine: @unchecked Sendable {
             tabRatio: 0.8
         )
         
-        print("Generated \(geometries.count) tile shapes.")
-        
         // Build tile objects and extract thumbnails & masks
         self.tiles = geometries.map { geom in
             let tile = MacOSaiXTile(geometry: geom)
             tile.rasterizeMask(withResolution: 16)
-            tile.extractTargetThumbnail(from: img, mosaicSize: self.mosaicSize)
+            tile.extractTargetThumbnail(from: image, mosaicSize: self.mosaicSize)
             return tile
         }
     }
     
-    /// Processes an image candidate and tests it against all tiles.
-    public func testCandidate(_ candidate: SourceImageCandidate) {
+    /// Processes an image candidate and tests it against all tiles. Returns true if any tile was updated.
+    @discardableResult
+    public func testCandidate(_ candidate: SourceImageCandidate) -> Bool {
+        if isCancelled { return false }
+        
         let matcher = MacOSaiXMatcher.shared()
         let candidatePixels = (candidate.thumbnailPixels as NSData).bytes.assumingMemoryBound(to: UInt8.self)
         
@@ -102,11 +116,13 @@ public final class MosaicEngine: @unchecked Sendable {
         }
         
         if candidateScores.isEmpty {
-            return
+            return false
         }
         
         // Sort candidate matches best first (lowest score = best)
         candidateScores.sort { $0.score < $1.score }
+        
+        var anyUpdated = false
         
         // 2. Assign to tiles respecting constraints
         for match in candidateScores {
@@ -144,6 +160,11 @@ public final class MosaicEngine: @unchecked Sendable {
             tile.bestScore = match.score
             tile.bestImageIdentifier = candidate.identifier
             tile.bestImageURL = candidate.url
+            anyUpdated = true
+            
+            onTileUpdated?(match.tileIndex)
         }
+        
+        return anyUpdated
     }
 }

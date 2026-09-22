@@ -7,6 +7,12 @@ public struct SourceImageCandidate: Sendable {
     public let identifier: String
     public let url: URL
     public let thumbnailPixels: Data // 16x16 RGBA (1024 bytes)
+    
+    public init(identifier: String, url: URL, thumbnailPixels: Data) {
+        self.identifier = identifier
+        self.url = url
+        self.thumbnailPixels = thumbnailPixels
+    }
 }
 
 public final class ImageLoader: @unchecked Sendable {

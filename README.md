@@ -6,8 +6,9 @@ This repository contains the original historical codebase as well as **`macosaix
 
 ---
 
-## What Makes MacOSaiX Special
+## Modern Revival Features
 
+- **Native macOS GUI App (`MacOSaiX.app`)**: Faithful to Frank Midgley's classic 2-pane layout (sidebar controls + live progressive CoreGraphics canvas + interactive blend slider), built in modern Swift & SwiftUI.
 - **Interlocking Jigsaw Puzzle Tiles**: Every piece is a real puzzle piece mathematically generated with cubic Bezier tabs and sockets that connect with adjacent pieces.
 - **Hexagonal Tessellations**: Honeycomb tile layouts that give mosaics a modern geometric feel.
 - **Masked Perceptual Color Matching**: Evaluates image candidates through the exact vector shape of each tile using the **Riemersma perceptual color difference metric** (human eye color weighting).
@@ -17,7 +18,21 @@ This repository contains the original historical codebase as well as **`macosaix
 
 ---
 
-## Quick Start
+## Launching the GUI App (`MacOSaiX.app`)
+
+A pre-bundled and signed application is ready in the repository:
+```bash
+open MacOSaiX.app
+```
+Or build and bundle it anytime from source:
+```bash
+cd macosaix-modern
+./scripts/bundle_app.sh
+```
+
+---
+
+## Quick Start (CLI)
 
 You do **not** need full Xcode installed — Apple's Command Line Tools (`swift`, `clang`) are sufficient.
 
@@ -38,7 +53,7 @@ macosaix-modern/.build/release/macosaix-cli
 sudo ln -sf "$(pwd)/.build/release/macosaix-cli" /usr/local/bin/macosaix-cli
 ```
 
-### 2. Generate a Mosaic
+### 2. Generate a Mosaic from Terminal
 
 ```bash
 # Make a jigsaw puzzle mosaic from an iPhone HEIC photo and your photo folder:
@@ -120,8 +135,11 @@ macosaix-cli \
 ---
 
 ## Project Structure
-
-- **`macosaix-modern/`**: The modern hybrid revival:
-  - `Sources/MacOSaiXCore/`: Objective-C core module containing the original cubic Bezier puzzle tab mathematics, hexagonal tessellations, and Riemersma perceptual color matching.
-  - `Sources/macosaix-cli/`: Swift 6 CLI runner, Apple ImageIO HEIC loader, RAM pre-flight safety check, and high-res vector-clipped exporter.
-- **`MacOSaiX/`**, **`Standard Plugins/`**: Original 2002–2007 Objective-C Mac OS X application codebase by Frank Midgley.
+ 
+ - **`macosaix-modern/`**: The modern hybrid revival:
+   - `Sources/MacOSaiXCore/`: Objective-C core module containing the original cubic Bezier puzzle tab mathematics, hexagonal tessellations, and Riemersma perceptual color matching.
+   - `Sources/MacOSaiXKit/`: Shared Swift package providing `ImageLoader` (HEIC / ImageIO downsampling), `MosaicEngine` (parallel solver), `MosaicRenderer` (bounded-RAM exporter), and `MemoryChecker`.
+   - `Sources/MacOSaiXApp/`: Native SwiftUI GUI application with sidebar controls, live progressive canvas, blend slider, and tile popover inspector.
+   - `Sources/macosaix-cli/`: High-performance command-line tool.
+   - `scripts/bundle_app.sh`: Automated build and packaging script for `MacOSaiX.app`.
+ - **`MacOSaiX/`**, **`Standard Plugins/`**: Original 2002–2007 Objective-C Mac OS X application codebase by Frank Midgley.

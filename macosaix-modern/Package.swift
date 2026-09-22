@@ -11,9 +11,17 @@ let package = Package(
             name: "MacOSaiXCore",
             targets: ["MacOSaiXCore"]
         ),
+        .library(
+            name: "MacOSaiXKit",
+            targets: ["MacOSaiXKit"]
+        ),
         .executable(
             name: "macosaix-cli",
             targets: ["macosaix-cli"]
+        ),
+        .executable(
+            name: "MacOSaiXApp",
+            targets: ["MacOSaiXApp"]
         )
     ],
     targets: [
@@ -25,10 +33,21 @@ let package = Package(
                 .headerSearchPath("include")
             ]
         ),
+        .target(
+            name: "MacOSaiXKit",
+            dependencies: ["MacOSaiXCore"],
+            path: "Sources/MacOSaiXKit"
+        ),
         .executableTarget(
             name: "macosaix-cli",
-            dependencies: ["MacOSaiXCore"],
+            dependencies: ["MacOSaiXCore", "MacOSaiXKit"],
             path: "Sources/macosaix-cli"
+        ),
+        .executableTarget(
+            name: "MacOSaiXApp",
+            dependencies: ["MacOSaiXCore", "MacOSaiXKit"],
+            path: "Sources/MacOSaiXApp"
         )
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )

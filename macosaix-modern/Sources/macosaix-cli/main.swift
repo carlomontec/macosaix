@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import MacOSaiXCore
+import MacOSaiXKit
 
 func printUsage() {
     print("""
