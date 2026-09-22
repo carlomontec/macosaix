@@ -65,6 +65,22 @@ Instead, we implement **Reinhard Statistical Color Transfer** formulated inside 
   - **Reinhard, E., Ashikhmin, M., Gooch, B., & Shirley, P. (2001)**. *Color Transfer between Images*. IEEE Computer Graphics and Applications, 21(5), 34–41.
   - **Ottosson, B. (2020)**. *A perceptual color space for image processing* (Oklab).
 
+### 2. Edge-Aware & Directional Matching (Sobel HOG) 🧭📐
+Traditional photomosaics evaluate only color distance. If a target tile contains a high-contrast diagonal edge (an architectural beam, a jawline, an eye contour, or a horizon), standard color matching might place a flat photo or an image whose internal lines clash with the contour.
+
+**Edge-Aware Directional Matching** aligns the structural flow of constituent photos with the target image contours using a **Histogram of Oriented Gradients (HOG)**:
+- **Sobel Spatial Gradients**: Applies horizontal and vertical $3 \times 3$ Sobel convolution filters ($G_x, G_y$) to compute gradient magnitude $M = \sqrt{G_x^2 + G_y^2}$ and unsigned orientation $\theta = \operatorname{atan2}(G_y, G_x) \pmod \pi \in [0, \pi)$.
+- **8-Bin Interpolated Orientation Histograms**: Accumulates edge energy into an $L_2$-normalized 8-bin orientation vector with bilinear angular interpolation to prevent hard bin boundary artifacts.
+- **Saliency Gating**: Automatically scales edge weighting based on the target tile's edge energy. Flat regions (skies, smooth gradients) have zero edge energy, so the algorithm automatically defaults to pure color matching without noise or unwanted penalties.
+- **Combined Distance Metric**:
+  $$D_{\text{total}} = (1 - \alpha_{\text{eff}}) \cdot D_{\text{color}} + \alpha_{\text{eff}} \cdot (1 - \mathbf{h}_{\text{target}} \cdot \mathbf{h}_{\text{candidate}})$$
+- **Interactive GUI & CLI**:
+  - **Edge Alignment** slider (0% to 100%) in the Matching sidebar with an in-app `(i)` educational popover.
+  - `--edge-weight <float>` option in `macosaix-cli`.
+- **Academic References**:
+  - **Dalal, N., & Triggs, B. (2005)**. *Histograms of Oriented Gradients for Human Detection*. IEEE CVPR, 1, 886–893.
+  - **Park, J., Kang, K., & Chung, K. (2006)**. *Edge-based Tile Mosaic Simulation*. Computer Graphics Forum, 25(3), 441–448.
+
 ---
 
 ## Launching the Desktop Application
@@ -137,6 +153,7 @@ macosaix-cli \
 | **`--width <pixels>`** | Output resolution width in pixels. | `2400` | `2400` (screen), `4000`–`8000` (print) |
 | **`--stroke <pixels>`** | Border cutline stroke width (`0.0` for seamless, `0.5`+ for puzzle die-cuts). | `0.0` | `0.5` or `1.0` |
 | **`--color-transfer <float>`** | Reinhard perceptual color transfer (`0.0` = original, `1.0` = full match). | `0.0` | `0.3` to `0.5` |
+| **`--edge-weight <float>`** | Edge-aware directional matching (`0.0` = color only, `1.0` = max edge weighting). | `0.0` | `0.25` to `0.45` |
 | **`--metric <type>`** | Color metric: `riemersma` (human eye perceptual) or `rgb` (Euclidean). | `riemersma` | `riemersma` |
 | **`--force`** | Bypasses the physical RAM pre-flight guard for massive ultra-high-res renders. | *Off* | Flag (no argument) |
 

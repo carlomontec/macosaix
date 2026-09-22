@@ -36,12 +36,16 @@ public final class MosaicViewModel: ObservableObject {
     @Published public var blendOpacity: Double = 0.0
     
     // Reinhard Perceptual Color Transfer (0.0 = untouched photos, 1.0 = full statistical color transfer)
-    @Published public var colorTransferStrength: Double = 0.0 {
+    @Published public var colorTransferStrength: Double = 0.0
+    @Published public var showingColorTransferInfo: Bool = false
+    
+    // Edge-Aware / Directional Matching (0.0 = color only, 1.0 = maximum edge orientation alignment)
+    @Published public var edgeWeight: Double = 0.0 {
         didSet {
-            canvasVersion += 1
+            engine?.edgeWeight = Float(edgeWeight)
         }
     }
-    @Published public var showingColorTransferInfo: Bool = false
+    @Published public var showingEdgeMatchingInfo: Bool = false
     
     // MARK: - Image Sources State
     @Published public var sourceFolders: [URL] = []
@@ -179,6 +183,7 @@ public final class MosaicViewModel: ObservableObject {
         let reuse = self.maxReuse
         let minDist = self.minDistance
         let metric = self.colorMetric
+        let edgeW = Float(self.edgeWeight)
         
         tilePrepTask = Task.detached(priority: .userInitiated) { [weak self, cgImg] in
             let newEngine = MosaicEngine(
@@ -188,7 +193,8 @@ public final class MosaicViewModel: ObservableObject {
                 curviness: curv,
                 maxReuse: reuse,
                 minDistance: minDist,
-                metric: metric
+                metric: metric,
+                edgeWeight: edgeW
             )
             
             do {
@@ -583,7 +589,8 @@ public final class MosaicViewModel: ObservableObject {
             minDistance: minDistance,
             colorMetric: metricStr,
             blendOpacity: blendOpacity,
-            colorTransferStrength: colorTransferStrength
+            colorTransferStrength: colorTransferStrength,
+            edgeWeight: edgeWeight
         )
         
         var tileRecords: [MacOSaiXProject.TileMatchRecord] = []
@@ -670,6 +677,7 @@ public final class MosaicViewModel: ObservableObject {
                     self.colorMetric = (project.settings.colorMetric == "rgb") ? .RGB : .riemersma
                     self.blendOpacity = project.settings.blendOpacity
                     self.colorTransferStrength = project.settings.colorTransferStrength
+                    self.edgeWeight = project.settings.edgeWeight
                     
                     self.sourceFolders = project.sourceFolders.compactMap { path in
                         let url = URL(fileURLWithPath: path)
@@ -743,7 +751,8 @@ public final class MosaicViewModel: ObservableObject {
                     curviness: Float(self.curviness),
                     maxReuse: self.maxReuse,
                     minDistance: self.minDistance,
-                    metric: self.colorMetric
+                    metric: self.colorMetric,
+                    edgeWeight: Float(self.edgeWeight)
                 )
                 
                 do {

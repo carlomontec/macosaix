@@ -25,6 +25,7 @@ func printUsage() {
       --width <pixels>       Output mosaic pixel width (default: 2400)
       --stroke <pixels>      Tile border stroke width (default: 0.0)
       --color-transfer <f>   Reinhard perceptual color transfer 0.0 - 1.0 (default: 0.0)
+      --edge-weight <f>      Edge-aware directional matching 0.0 - 1.0 (default: 0.0)
       --metric <type>        Color metric: riemersma | rgb (default: riemersma)
       --force                Bypass memory safety check if estimated RAM is very high
       --help                 Show this help message
@@ -77,6 +78,7 @@ func main() async {
     let outputWidth = Int(args["width"] ?? "2400") ?? 2400
     let strokeWidth = Float(args["stroke"] ?? "0.0") ?? 0.0
     let colorTransfer = max(0.0, min(1.0, Float(args["color-transfer"] ?? "0.0") ?? 0.0))
+    let edgeWeight = max(0.0, min(1.0, Float(args["edge-weight"] ?? "0.0") ?? 0.0))
     let metricStr = args["metric"]?.lowercased() ?? "riemersma"
     
     let shapeType: MacOSaiXShapeType
@@ -108,6 +110,9 @@ func main() async {
     if colorTransfer > 0.001 {
         print("Color transfer: \(Int(colorTransfer * 100))%")
     }
+    if edgeWeight > 0.001 {
+        print("Edge weight:   \(Int(edgeWeight * 100))%")
+    }
     print("Output width:  \(outputWidth) px")
     print("Output file:   \(outputURL.path)")
     print("--------------------------------------------------")
@@ -119,7 +124,8 @@ func main() async {
         curviness: curviness,
         maxReuse: maxReuse,
         minDistance: minDistance,
-        metric: colorMetric
+        metric: colorMetric,
+        edgeWeight: edgeWeight
     )
     
     do {

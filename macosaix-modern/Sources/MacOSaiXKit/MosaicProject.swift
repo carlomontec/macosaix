@@ -38,6 +38,7 @@ public struct MacOSaiXProject: Codable, Sendable {
         public var colorMetric: String
         public var blendOpacity: Double
         public var colorTransferStrength: Double
+        public var edgeWeight: Double
         
         public init(
             shapeType: String,
@@ -49,7 +50,8 @@ public struct MacOSaiXProject: Codable, Sendable {
             minDistance: Int,
             colorMetric: String,
             blendOpacity: Double,
-            colorTransferStrength: Double = 0.0
+            colorTransferStrength: Double = 0.0,
+            edgeWeight: Double = 0.0
         ) {
             self.shapeType = shapeType
             self.tilesAcross = tilesAcross
@@ -61,10 +63,11 @@ public struct MacOSaiXProject: Codable, Sendable {
             self.colorMetric = colorMetric
             self.blendOpacity = blendOpacity
             self.colorTransferStrength = colorTransferStrength
+            self.edgeWeight = edgeWeight
         }
         
         enum CodingKeys: String, CodingKey {
-            case shapeType, tilesAcross, tilesDown, curviness, strokeWidth, maxReuse, minDistance, colorMetric, blendOpacity, colorTransferStrength
+            case shapeType, tilesAcross, tilesDown, curviness, strokeWidth, maxReuse, minDistance, colorMetric, blendOpacity, colorTransferStrength, edgeWeight
         }
         
         public init(from decoder: Decoder) throws {
@@ -79,6 +82,7 @@ public struct MacOSaiXProject: Codable, Sendable {
             colorMetric = try container.decode(String.self, forKey: .colorMetric)
             blendOpacity = try container.decode(Double.self, forKey: .blendOpacity)
             colorTransferStrength = try container.decodeIfPresent(Double.self, forKey: .colorTransferStrength) ?? 0.0
+            edgeWeight = try container.decodeIfPresent(Double.self, forKey: .edgeWeight) ?? 0.0
         }
     }
     
