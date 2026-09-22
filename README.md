@@ -40,6 +40,33 @@
 
 ---
 
+## 🚀 Additional Features & Algorithms (Over Original MacOSaiX)
+
+While faithfully honoring Frank M. Midgley's original architecture and aesthetics, **MacOSaiX Remake** introduces modern computational photography and computer vision algorithms not present in the classic 2002–2009 application:
+
+### 1. Reinhard Perceptual Color Transfer in OKLab Space 🎨🔬
+Traditional photomosaics often suffer when the user's photo collection lacks certain hues present in the target image (e.g. skin tones, azure skies, deep greens). Simple opacity blending washes out individual photos and feels like an artificial overlay.
+
+Instead, we implement **Reinhard Statistical Color Transfer** formulated inside the modern **OKLab color space**:
+- **Why OKLab?**: Unlike traditional Ruderman $\ell\alpha\beta$, OKLab cleanly decorrelates perceived lightness ($L$) from chromatic opponent channels ($a, b$). Constituent photos keep their internal contrast, textures, and deep shadows razor-sharp while naturally adopting the target tile's color palette.
+- **Mathematical Formulation**:
+  1. **sRGB $\to$ Linear RGB $\to$ LMS Cone Response $\to$ OKLab**:
+     $$\begin{bmatrix} L \\ a \\ b \end{bmatrix} = \mathbf{M}_2 \cdot \left( \mathbf{M}_1 \cdot \begin{bmatrix} R_{\text{linear}} \\ G_{\text{linear}} \\ B_{\text{linear}} \end{bmatrix} \right)^{1/3}$$
+  2. **Channel-Wise Statistical Normalization & Shifting**:
+     For each channel $c \in \{L, a, b\}$, candidate pixels are aligned to the target tile's distribution:
+     $$c_{\text{trans}} = \mu_{\text{target}, c} + \left( \frac{\sigma_{\text{target}, c}}{\sigma_{\text{src}, c}} \right) \cdot (c_{\text{src}} - \mu_{\text{src}, c})$$
+  3. **Controlled Strength Interpolation**:
+     $$c_{\text{final}} = (1 - \lambda) \cdot c_{\text{src}} + \lambda \cdot c_{\text{trans}}, \quad \lambda \in [0.0, 1.0]$$
+- **Interactive Real-Time GUI**:
+  - Floating slider (`Transfer: 0% – 100%`) with dynamic quantized caching for silky 60+ FPS scrub performance.
+  - Sweet spot at **30%–50%** for ideal harmony between macro fidelity and constituent photo recognition.
+  - In-app **`(i)` educational popover** displaying live explanations and literature citations.
+- **Academic References**:
+  - **Reinhard, E., Ashikhmin, M., Gooch, B., & Shirley, P. (2001)**. *Color Transfer between Images*. IEEE Computer Graphics and Applications, 21(5), 34–41.
+  - **Ottosson, B. (2020)**. *A perceptual color space for image processing* (Oklab).
+
+---
+
 ## Launching the Desktop Application
 
 A pre-built, codesigned application is included in the repository:
@@ -109,6 +136,7 @@ macosaix-cli \
 | **`--min-distance <N>`** | Minimum grid spacing between duplicate photos to prevent clustering. | `2` | `2` to `5` |
 | **`--width <pixels>`** | Output resolution width in pixels. | `2400` | `2400` (screen), `4000`–`8000` (print) |
 | **`--stroke <pixels>`** | Border cutline stroke width (`0.0` for seamless, `0.5`+ for puzzle die-cuts). | `0.0` | `0.5` or `1.0` |
+| **`--color-transfer <float>`** | Reinhard perceptual color transfer (`0.0` = original, `1.0` = full match). | `0.0` | `0.3` to `0.5` |
 | **`--metric <type>`** | Color metric: `riemersma` (human eye perceptual) or `rgb` (Euclidean). | `riemersma` | `riemersma` |
 | **`--force`** | Bypasses the physical RAM pre-flight guard for massive ultra-high-res renders. | *Off* | Flag (no argument) |
 
