@@ -150,10 +150,27 @@ public struct SidebarView: View {
                             }
                         }
                         
-                        if viewModel.heicCount > 0 {
-                            Text("Includes \(viewModel.heicCount) Apple HEIC photos")
+                        if !viewModel.formatBreakdownText.isEmpty {
+                            Text(viewModel.formatBreakdownText)
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
+                        }
+                        
+                        if !viewModel.foundImageURLs.isEmpty && viewModel.totalTilesCount > 0 && viewModel.foundImageURLs.count < viewModel.totalTilesCount {
+                            HStack(alignment: .top, spacing: 6) {
+                                Image(systemName: "lightbulb.fill")
+                                    .foregroundColor(.orange)
+                                    .font(.caption)
+                                Text("Tip: You have fewer photos (\(viewModel.foundImageURLs.count)) than tiles (\(viewModel.totalTilesCount)). For best results, set Max Reuse to Unlimited and Blend to 15–25%.")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .fill(Color.orange.opacity(0.1))
+                            )
                         }
                     }
                     .padding(.top, 4)

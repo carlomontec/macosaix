@@ -39,6 +39,7 @@ public final class MosaicViewModel: ObservableObject {
     @Published public var sourceFolders: [URL] = []
     @Published public var foundImageURLs: [URL] = []
     @Published public var heicCount: Int = 0
+    @Published public var formatBreakdownText: String = ""
     
     // MARK: - Execution & Matching State
     @Published public var engine: MosaicEngine?
@@ -161,7 +162,38 @@ public final class MosaicViewModel: ObservableObject {
         }
         self.foundImageURLs = allURLs
         self.totalImagesCount = allURLs.count
-        self.heicCount = allURLs.filter { $0.pathExtension.lowercased() == "heic" }.count
+        self.heicCount = allURLs.filter { 
+            let ext = $0.pathExtension.lowercased()
+            return ext == "heic" || ext == "heif"
+        }.count
+        
+        // Multi-format breakdown
+        var counts: [String: Int] = [:]
+        for url in allURLs {
+            let ext = url.pathExtension.lowercased()
+            switch ext {
+            case "heic", "heif":
+                counts["HEIC", default: 0] += 1
+            case "jpg", "jpeg":
+                counts["JPEG", default: 0] += 1
+            case "png":
+                counts["PNG", default: 0] += 1
+            case "tiff", "tif":
+                counts["TIFF", default: 0] += 1
+            case "webp":
+                counts["WebP", default: 0] += 1
+            case "gif":
+                counts["GIF", default: 0] += 1
+            case "bmp":
+                counts["BMP", default: 0] += 1
+            default:
+                if !ext.isEmpty {
+                    counts[ext.uppercased(), default: 0] += 1
+                }
+            }
+        }
+        let sorted = counts.filter { $0.value > 0 }.sorted { $0.value > $1.value }
+        self.formatBreakdownText = sorted.map { "\($0.value) \($0.key)" }.joined(separator: " • ")
         
         updateMemoryEstimate()
         if targetCGImage != nil && !foundImageURLs.isEmpty {
@@ -202,8 +234,10 @@ public final class MosaicViewModel: ObservableObject {
             let total = candidates.count
             var count = 0
             let loader = ImageLoader()
+            let batchSize = max(8, ProcessInfo.processInfo.activeProcessorCount * 2)
             
-            for url in candidates {
+            var index = 0
+            while index < total {
                 if Task.isCancelled { break }
                 
                 // Check pause state
@@ -212,42 +246,74 @@ public final class MosaicViewModel: ObservableObject {
                 }
                 if Task.isCancelled { break }
                 
-                if let thumbData = loader.loadThumbnail(from: url, targetSize: 16) {
-                    let cand = SourceImageCandidate(identifier: url.path, url: url, thumbnailPixels: thumbData)
-                    let updated = engine.testCandidate(cand)
+                let endIndex = min(index + batchSize, total)
+                let currentChunk = Array(candidates[index..<endIndex])
+                index = endIndex
+                
+                // Decode thumbnails in parallel across all Apple Silicon CPU cores
+                var chunkCandidates: [SourceImageCandidate] = []
+                chunkCandidates.reserveCapacity(currentChunk.count)
+                
+                await withTaskGroup(of: SourceImageCandidate?.self) { group in
+                    for url in currentChunk {
+                        group.addTask {
+                            if Task.isCancelled { return nil }
+                            if let thumbData = loader.loadThumbnail(from: url, targetSize: 16) {
+                                return SourceImageCandidate(identifier: url.path, url: url, thumbnailPixels: thumbData)
+                            }
+                            return nil
+                        }
+                    }
                     
-                    if updated {
-                        await MainActor.run { [weak self] in
-                            self?.canvasVersion += 1
+                    for await cand in group {
+                        if let cand = cand {
+                            chunkCandidates.append(cand)
                         }
                     }
                 }
                 
-                count += 1
+                if Task.isCancelled { break }
+                
+                var anyChunkUpdated = false
+                for cand in chunkCandidates {
+                    if Task.isCancelled { break }
+                    let updated = engine.testCandidate(cand)
+                    if updated {
+                        anyChunkUpdated = true
+                        // Pre-heat thumbnail cache in background for smooth rendering
+                        MosaicThumbnailCache.shared.preheatThumbnail(for: cand.url, maxPixelSize: 140)
+                    }
+                }
+                
+                if anyChunkUpdated {
+                    await MainActor.run { [weak self] in
+                        self?.canvasVersion += 1
+                    }
+                }
+                
+                count += currentChunk.count
                 let currentCount = count
                 
-                // Throttle UI status updates to every 10 images or on completion
-                if currentCount % 10 == 0 || currentCount == total {
-                    let matched = engine.tiles.filter { $0.bestImageURL != nil }.count
-                    let avgScore: Float
+                // Update UI status at the end of each batch or on completion
+                let matched = engine.tiles.filter { $0.bestImageURL != nil }.count
+                let avgScore: Float
+                if matched > 0 {
+                    let totalScore = engine.tiles.compactMap { $0.bestImageURL != nil ? $0.bestScore : nil }.reduce(0.0, +)
+                    avgScore = totalScore / Float(matched)
+                } else {
+                    avgScore = 1.0
+                }
+                let pct = Int(Double(currentCount) / Double(total) * 100.0)
+                let status = "Matching: \(currentCount)/\(total) photos (\(pct)%) | \(matched)/\(engine.tiles.count) tiles"
+                
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    self.processedImagesCount = currentCount
+                    self.matchedTilesCount = matched
                     if matched > 0 {
-                        let totalScore = engine.tiles.compactMap { $0.bestImageURL != nil ? $0.bestScore : nil }.reduce(0.0, +)
-                        avgScore = totalScore / Float(matched)
-                    } else {
-                        avgScore = 1.0
+                        self.averageScore = avgScore
                     }
-                    let pct = Int(Double(currentCount) / Double(total) * 100.0)
-                    let status = "Matching: \(currentCount)/\(total) photos (\(pct)%) | \(matched)/\(engine.tiles.count) tiles"
-                    
-                    await MainActor.run { [weak self] in
-                        guard let self = self else { return }
-                        self.processedImagesCount = currentCount
-                        self.matchedTilesCount = matched
-                        if matched > 0 {
-                            self.averageScore = avgScore
-                        }
-                        self.statusMessage = status
-                    }
+                    self.statusMessage = status
                 }
             }
             

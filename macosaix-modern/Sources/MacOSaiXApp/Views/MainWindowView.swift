@@ -17,7 +17,7 @@ public struct MainWindowView: View {
                 .frame(minWidth: 500, minHeight: 450)
         }
         .toolbar {
-            ToolbarItemGroup(placement: .automatic) {
+            ToolbarItemGroup(placement: .navigation) {
                 // Play / Pause matching
                 Button(action: {
                     viewModel.toggleMatching()
@@ -38,42 +38,32 @@ public struct MainWindowView: View {
                     }
                     .keyboardShortcut(".", modifiers: [.command])
                 }
-                
-                Spacer()
-                
-                // Status & Progress indicator
+            }
+            
+            ToolbarItem(placement: .principal) {
+                // Centered Status & Progress indicator
                 HStack(spacing: 8) {
                     if (viewModel.isRunning && !viewModel.isPaused) || viewModel.isExporting {
                         ProgressView()
                             .controlSize(.small)
                     }
                     Text(viewModel.statusMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.callout)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
                         .lineLimit(1)
-                        .truncationMode(.tail)
+                        .truncationMode(.middle)
                 }
-                .frame(maxWidth: 280)
-                .layoutPriority(0)
-                
-                Spacer()
-                
-                // Classic "Blend with Original" Slider
-                HStack(spacing: 6) {
-                    Image(systemName: "circle.lefthalf.filled")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Text("Blend:")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Slider(value: $viewModel.blendOpacity, in: 0.0...1.0)
-                        .frame(width: 85)
-                }
-                .disabled(viewModel.targetCGImage == nil)
-                .layoutPriority(2)
-                
-                Divider()
-                
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color(nsColor: .controlBackgroundColor).opacity(0.85))
+                        .shadow(color: Color.black.opacity(0.08), radius: 2, y: 1)
+                )
+            }
+            
+            ToolbarItemGroup(placement: .primaryAction) {
                 // Export Button
                 Button(action: {
                     viewModel.isExportSheetPresented = true
