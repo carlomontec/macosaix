@@ -37,6 +37,7 @@ public struct MacOSaiXProject: Codable, Sendable {
         public var minDistance: Int
         public var colorMetric: String
         public var blendOpacity: Double
+        public var colorTransferStrength: Double
         
         public init(
             shapeType: String,
@@ -47,7 +48,8 @@ public struct MacOSaiXProject: Codable, Sendable {
             maxReuse: Int,
             minDistance: Int,
             colorMetric: String,
-            blendOpacity: Double
+            blendOpacity: Double,
+            colorTransferStrength: Double = 0.0
         ) {
             self.shapeType = shapeType
             self.tilesAcross = tilesAcross
@@ -58,6 +60,25 @@ public struct MacOSaiXProject: Codable, Sendable {
             self.minDistance = minDistance
             self.colorMetric = colorMetric
             self.blendOpacity = blendOpacity
+            self.colorTransferStrength = colorTransferStrength
+        }
+        
+        enum CodingKeys: String, CodingKey {
+            case shapeType, tilesAcross, tilesDown, curviness, strokeWidth, maxReuse, minDistance, colorMetric, blendOpacity, colorTransferStrength
+        }
+        
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            shapeType = try container.decode(String.self, forKey: .shapeType)
+            tilesAcross = try container.decode(Int.self, forKey: .tilesAcross)
+            tilesDown = try container.decode(Int.self, forKey: .tilesDown)
+            curviness = try container.decode(Float.self, forKey: .curviness)
+            strokeWidth = try container.decode(Double.self, forKey: .strokeWidth)
+            maxReuse = try container.decode(Int.self, forKey: .maxReuse)
+            minDistance = try container.decode(Int.self, forKey: .minDistance)
+            colorMetric = try container.decode(String.self, forKey: .colorMetric)
+            blendOpacity = try container.decode(Double.self, forKey: .blendOpacity)
+            colorTransferStrength = try container.decodeIfPresent(Double.self, forKey: .colorTransferStrength) ?? 0.0
         }
     }
     

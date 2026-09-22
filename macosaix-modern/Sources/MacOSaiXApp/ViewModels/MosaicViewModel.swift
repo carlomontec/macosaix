@@ -35,6 +35,13 @@ public final class MosaicViewModel: ObservableObject {
     // Blend with Original (0.0 = 100% Mosaic, 1.0 = 100% Original Photo)
     @Published public var blendOpacity: Double = 0.0
     
+    // Reinhard Perceptual Color Transfer (0.0 = untouched photos, 1.0 = full statistical color transfer)
+    @Published public var colorTransferStrength: Double = 0.0 {
+        didSet {
+            canvasVersion += 1
+        }
+    }
+    
     // MARK: - Image Sources State
     @Published public var sourceFolders: [URL] = []
     @Published public var foundImageURLs: [URL] = []
@@ -455,6 +462,7 @@ public final class MosaicViewModel: ObservableObject {
             let tilesCopy = engine.tiles
             let mosaicSizeCopy = engine.mosaicSize
             let stroke = Float(self.strokeWidth)
+            let transfer = Float(self.colorTransferStrength)
             
             Task.detached(priority: .userInitiated) {
                 let renderer = MosaicRenderer()
@@ -464,12 +472,13 @@ public final class MosaicViewModel: ObservableObject {
                         mosaicSize: mosaicSizeCopy,
                         outputWidth: outputWidth,
                         strokeWidth: stroke,
-                        outputURL: destinationURL
+                        colorTransferStrength: transfer,
+                        outputURL: finalURL
                     )
                     await MainActor.run {
                         self.isExporting = false
-                        self.statusMessage = "Export complete: \(destinationURL.lastPathComponent)"
-                        NSWorkspace.shared.activateFileViewerSelecting([destinationURL])
+                        self.statusMessage = "Export complete: \(finalURL.lastPathComponent)"
+                        NSWorkspace.shared.activateFileViewerSelecting([finalURL])
                     }
                 } catch {
                     await MainActor.run {
@@ -572,7 +581,8 @@ public final class MosaicViewModel: ObservableObject {
             maxReuse: maxReuse,
             minDistance: minDistance,
             colorMetric: metricStr,
-            blendOpacity: blendOpacity
+            blendOpacity: blendOpacity,
+            colorTransferStrength: colorTransferStrength
         )
         
         var tileRecords: [MacOSaiXProject.TileMatchRecord] = []
@@ -658,6 +668,7 @@ public final class MosaicViewModel: ObservableObject {
                     self.minDistance = project.settings.minDistance
                     self.colorMetric = (project.settings.colorMetric == "rgb") ? .RGB : .riemersma
                     self.blendOpacity = project.settings.blendOpacity
+                    self.colorTransferStrength = project.settings.colorTransferStrength
                     
                     self.sourceFolders = project.sourceFolders.compactMap { path in
                         let url = URL(fileURLWithPath: path)

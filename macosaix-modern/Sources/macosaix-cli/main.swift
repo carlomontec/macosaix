@@ -24,6 +24,7 @@ func printUsage() {
       --min-distance <N>     Minimum tile distance between identical photos (default: 2)
       --width <pixels>       Output mosaic pixel width (default: 2400)
       --stroke <pixels>      Tile border stroke width (default: 0.0)
+      --color-transfer <f>   Reinhard perceptual color transfer 0.0 - 1.0 (default: 0.0)
       --metric <type>        Color metric: riemersma | rgb (default: riemersma)
       --force                Bypass memory safety check if estimated RAM is very high
       --help                 Show this help message
@@ -75,6 +76,7 @@ func main() async {
     let minDistance = Int(args["min-distance"] ?? "2") ?? 2
     let outputWidth = Int(args["width"] ?? "2400") ?? 2400
     let strokeWidth = Float(args["stroke"] ?? "0.0") ?? 0.0
+    let colorTransfer = max(0.0, min(1.0, Float(args["color-transfer"] ?? "0.0") ?? 0.0))
     let metricStr = args["metric"]?.lowercased() ?? "riemersma"
     
     let shapeType: MacOSaiXShapeType
@@ -103,6 +105,9 @@ func main() async {
     print("Max reuse:     \(maxReuse == 0 ? "Unlimited" : "\(maxReuse)")")
     print("Min distance:  \(minDistance) tiles")
     print("Color metric:  \(metricStr)")
+    if colorTransfer > 0.001 {
+        print("Color transfer: \(Int(colorTransfer * 100))%")
+    }
     print("Output width:  \(outputWidth) px")
     print("Output file:   \(outputURL.path)")
     print("--------------------------------------------------")
@@ -210,6 +215,7 @@ func main() async {
             mosaicSize: engine.mosaicSize,
             outputWidth: outputWidth,
             strokeWidth: strokeWidth,
+            colorTransferStrength: colorTransfer,
             outputURL: outputURL
         )
         print(String(format: "Rendered and saved to \(outputURL.path) in %.2f seconds.",

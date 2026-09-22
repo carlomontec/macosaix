@@ -12,6 +12,7 @@ public final class MosaicRenderer {
         mosaicSize: CGSize,
         outputWidth: Int,
         strokeWidth: Float = 0.0,
+        colorTransferStrength: Float = 0.0,
         outputURL: URL
     ) throws {
         let scale = CGFloat(outputWidth) / mosaicSize.width
@@ -73,7 +74,15 @@ public final class MosaicRenderer {
                         img = CGImageSourceCreateThumbnailAtIndex(src, 0, drawOpts as CFDictionary)
                     }
                     
-                    if let cgImage = img {
+                    if var cgImage = img {
+                        if colorTransferStrength > 0.001 {
+                            cgImage = ColorTransfer.applyColorTransfer(
+                                to: cgImage,
+                                targetStats: tile.targetColorStatistics,
+                                strength: colorTransferStrength
+                            )
+                        }
+                        
                         let imgW = CGFloat(cgImage.width)
                         let imgH = CGFloat(cgImage.height)
                         let fillScale = max(bounds.width / imgW, bounds.height / imgH)

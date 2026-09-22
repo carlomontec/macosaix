@@ -23,6 +23,7 @@ public struct MosaicCanvasView: View {
                         targetImage: viewModel.targetCGImage,
                         blendOpacity: viewModel.blendOpacity,
                         strokeWidth: viewModel.strokeWidth,
+                        colorTransferStrength: viewModel.colorTransferStrength,
                         onTileTapped: { tile in
                             viewModel.selectedTile = tile
                         },
@@ -115,13 +116,34 @@ public struct MosaicCanvasView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Slider(value: $viewModel.blendOpacity, in: 0.0...1.0)
-                                    .frame(width: 80)
+                                    .frame(width: 70)
                                 Text("\(Int(viewModel.blendOpacity * 100))%")
                                     .font(.caption)
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
-                                    .frame(width: 32, alignment: .trailing)
+                                    .frame(width: 30, alignment: .trailing)
                             }
+                            
+                            Divider()
+                                .frame(height: 16)
+                            
+                            // Color Transfer Slider Section
+                            HStack(spacing: 6) {
+                                Image(systemName: "paintpalette")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("Transfer:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Slider(value: $viewModel.colorTransferStrength, in: 0.0...1.0)
+                                    .frame(width: 70)
+                                Text("\(Int(viewModel.colorTransferStrength * 100))%")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 30, alignment: .trailing)
+                            }
+                            .help("Reinhard Perceptual Color Transfer: statistically harmonizes photo colors with the target image")
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
@@ -153,6 +175,7 @@ private struct MosaicRepresentable: NSViewRepresentable {
     let targetImage: CGImage?
     let blendOpacity: Double
     let strokeWidth: Double
+    let colorTransferStrength: Double
     let onTileTapped: (MacOSaiXTile) -> Void
     let onPan: (CGSize) -> Void
     let onMagnify: (CGFloat) -> Void
@@ -170,6 +193,7 @@ private struct MosaicRepresentable: NSViewRepresentable {
         nsView.targetImage = targetImage
         nsView.blendOpacity = blendOpacity
         nsView.strokeWidth = strokeWidth
+        nsView.colorTransferStrength = colorTransferStrength
         nsView.onTileTapped = onTileTapped
         nsView.onPan = onPan
         nsView.onMagnify = onMagnify
@@ -182,6 +206,7 @@ private final class NSMosaicView: NSView {
     var targetImage: CGImage?
     var blendOpacity: Double = 0.0
     var strokeWidth: Double = 0.5
+    var colorTransferStrength: Double = 0.0
     var onTileTapped: ((MacOSaiXTile) -> Void)?
     var onPan: ((CGSize) -> Void)?
     var onMagnify: ((CGFloat) -> Void)?
@@ -266,7 +291,12 @@ private final class NSMosaicView: NSView {
             context.clip()
             
             if let imageURL = tile.bestImageURL {
-                if let cgImg = MosaicThumbnailCache.shared.thumbnail(for: imageURL) {
+                let targetStats = (colorTransferStrength > 0.001) ? tile.targetColorStatistics : nil
+                if let cgImg = MosaicThumbnailCache.shared.thumbnail(
+                    for: imageURL,
+                    targetStats: targetStats,
+                    colorTransferStrength: Float(colorTransferStrength)
+                ) {
                     let b = tile.geometry.bounds
                     let imgW = CGFloat(cgImg.width)
                     let imgH = CGFloat(cgImg.height)
