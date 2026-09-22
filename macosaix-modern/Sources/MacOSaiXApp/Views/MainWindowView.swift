@@ -78,11 +78,22 @@ public struct MainWindowView: View {
                 }
                 .disabled(!viewModel.hasCompletedTiles)
                 .keyboardShortcut("e", modifiers: [.command])
+                
+                // About Button
+                Button(action: {
+                    viewModel.isAboutPresented = true
+                }) {
+                    Image(systemName: "info.circle")
+                }
+                .help("About MacOSaiX Remake")
             }
         }
         .sheet(isPresented: $viewModel.isExportSheetPresented) {
             ExportSheetView()
                 .environmentObject(viewModel)
+        }
+        .sheet(isPresented: $viewModel.isAboutPresented) {
+            AboutView()
         }
         .popover(item: $viewModel.selectedTile) { tile in
             TileDetailPopover(tile: tile) {

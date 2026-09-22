@@ -1,14 +1,14 @@
-# MacOSaiX (Revived for Modern macOS)
+# MacOSaiX Remake (Apple Silicon Native)
 
-**MacOSaiX** was originally created by Frank M. Midgley in the early 2000s and was widely regarded as the premier photomosaic software for Mac OS X. Unlike basic mosaic generators that superimpose colored tints over images, MacOSaiX produces **true, un-tinted photomosaics** using vector-masked tile shapes — most famously **interlocking jigsaw puzzle pieces** and **hexagonal honeycombs**.
+**MacOSaiX Remake** is a modern, native Apple Silicon revival and remake of **MacOSaiX** — the legendary photomosaic software originally created by **Frank M. Midgley** (2002–2007) for Mac OS X. 
 
-This repository contains the original historical codebase as well as **`macosaix-modern`**: a native Apple Silicon and modern macOS CLI revival that brings the core engine into the modern era with **full native HEIC support** and **hardware-accelerated matching**.
+Revived, rebuilt, and modernized using **AI-assisted coding** by **Carlo Monjaraz-Tec** (2026), it preserves Frank Midgley's original mathematical foundations (cubic Bezier interlocking jigsaw puzzle pieces, hexagonal tessellations, and Riemersma perceptual color metrics) while rebuilding the entire runtime in Swift, SwiftUI, and native Apple frameworks.
 
 ---
 
 ## Modern Revival Features
 
-- **Native macOS GUI App (`MacOSaiX.app`)**: Faithful to Frank Midgley's classic 2-pane layout (sidebar controls + live progressive CoreGraphics canvas + interactive blend slider), built in modern Swift & SwiftUI.
+- **Native macOS GUI App (`MacOSaiX Remake.app`)**: Faithful to Frank Midgley's classic 2-pane layout (sidebar controls + live progressive CoreGraphics canvas + interactive blend slider), built in modern Swift & SwiftUI.
 - **Interlocking Jigsaw Puzzle Tiles**: Every piece is a real puzzle piece mathematically generated with cubic Bezier tabs and sockets that connect with adjacent pieces.
 - **Hexagonal Tessellations**: Honeycomb tile layouts that give mosaics a modern geometric feel.
 - **Masked Perceptual Color Matching**: Evaluates image candidates through the exact vector shape of each tile using the **Riemersma perceptual color difference metric** (human eye color weighting).
@@ -18,11 +18,11 @@ This repository contains the original historical codebase as well as **`macosaix
 
 ---
 
-## Launching the GUI App (`MacOSaiX.app`)
+## Launching the GUI App (`MacOSaiX Remake.app`)
 
 A pre-bundled and signed application is ready in the repository:
 ```bash
-open MacOSaiX.app
+open "MacOSaiX Remake.app"
 ```
 Or build and bundle it anytime from source:
 ```bash

@@ -5,8 +5,9 @@ import MacOSaiXKit
 
 func printUsage() {
     print("""
-    MacOSaiX Modern CLI
-    Revived Photomosaic Generator with Jigsaw Puzzle, Hexagon, and Rectangular Tiling.
+    MacOSaiX Remake CLI v3.0.0 (Apple Silicon Native)
+    A modern remake of Frank M. Midgley's classic Mac photomosaic software.
+    Revived and rebuilt with AI-assisted coding by Carlo Monjaraz-Tec (2026).
     
     Usage:
       macosaix-cli --target <image> --sources <folder> [options]

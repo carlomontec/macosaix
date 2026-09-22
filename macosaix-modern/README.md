@@ -1,8 +1,19 @@
-# MacOSaiX Modern CLI
+# MacOSaiX Remake
 
-A modern, native Apple Silicon revival of **MacOSaiX** — the classic Mac photomosaic creator. 
+A modern, native Apple Silicon remake of **MacOSaiX** — the classic Mac photomosaic creator originally developed by **Frank M. Midgley** (2002–2007). 
+
+Revived and extended with **AI-assisted coding** by **Carlo Monjaraz-Tec** (2026).
 
 It takes a **target image** (the big picture) and recreates it using hundreds or thousands of smaller photos from a **folder of images** (including iPhone `.heic` photos), supporting **interlocking jigsaw puzzle pieces**, **hexagons**, and **rectangles**.
+
+---
+
+## The GUI App (`MacOSaiX Remake.app`)
+
+A full modern native macOS GUI application is included!
+```bash
+open "MacOSaiX Remake.app"
+```
 
 ---
 

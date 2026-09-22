@@ -9,7 +9,7 @@ echo "==> Building MacOSaiXApp in release mode..."
 cd "$PACKAGE_DIR"
 swift build -c release
 
-APP_NAME="MacOSaiX.app"
+APP_NAME="MacOSaiX Remake.app"
 APP_DIR="$PACKAGE_DIR/build/$APP_NAME"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -22,8 +22,8 @@ mkdir -p "$RESOURCES_DIR"
 
 # Copy binary
 echo "==> Copying binary..."
-cp "$PACKAGE_DIR/.build/release/MacOSaiXApp" "$MACOS_DIR/MacOSaiX"
-chmod +x "$MACOS_DIR/MacOSaiX"
+cp "$PACKAGE_DIR/.build/release/MacOSaiXApp" "$MACOS_DIR/MacOSaiX Remake"
+chmod +x "$MACOS_DIR/MacOSaiX Remake"
 
 # Copy Icon
 ICON_SRC="$REPO_ROOT/Icon work/Application Icon/Application Icon.icns"
@@ -42,17 +42,17 @@ cat << 'EOF' > "$CONTENTS_DIR/Info.plist"
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>MacOSaiX</string>
+    <string>MacOSaiX Remake</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.macosaix.modern</string>
+    <string>com.carlomontec.macosaix-remake</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>MacOSaiX</string>
+    <string>MacOSaiX Remake</string>
     <key>CFBundleDisplayName</key>
-    <string>MacOSaiX</string>
+    <string>MacOSaiX Remake</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -76,8 +76,9 @@ echo "==> Signing application bundle (ad-hoc)..."
 codesign --force --deep --sign - "$APP_DIR"
 
 # Also symlink / copy to project root for convenience
-cp -R "$APP_DIR" "$REPO_ROOT/MacOSaiX.app"
+rm -rf "$REPO_ROOT/MacOSaiX Remake.app" "$REPO_ROOT/MacOSaiX.app"
+cp -R "$APP_DIR" "$REPO_ROOT/MacOSaiX Remake.app"
 
 echo "==> Successfully created $APP_NAME!"
-echo "    Location: $REPO_ROOT/MacOSaiX.app"
-echo "    You can launch it via: open \"$REPO_ROOT/MacOSaiX.app\""
+echo "    Location: $REPO_ROOT/MacOSaiX Remake.app"
+echo "    You can launch it via: open \"$REPO_ROOT/MacOSaiX Remake.app\""

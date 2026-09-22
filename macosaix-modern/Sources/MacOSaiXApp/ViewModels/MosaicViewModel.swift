@@ -56,6 +56,7 @@ public final class MosaicViewModel: ObservableObject {
     // Selected Tile for Inspection Popover
     @Published public var selectedTile: MacOSaiXTile?
     @Published public var isExportSheetPresented: Bool = false
+    @Published public var isAboutPresented: Bool = false
     
     // Memory Estimation
     @Published public var estimatedRAMText: String = "0 MB"
