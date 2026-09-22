@@ -32,7 +32,7 @@ public struct MosaicCanvasView: View {
                     .gesture(
                         MagnificationGesture()
                             .onChanged { val in
-                                viewModel.zoomScale = max(0.5, min(4.0, val))
+                                viewModel.zoomScale = max(0.25, min(4.0, val))
                             }
                     )
                     .gesture(
@@ -46,6 +46,81 @@ public struct MosaicCanvasView: View {
                     )
                     .padding(20)
                     .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 3)
+                    
+                    // Floating Controls Bar (Zoom + Blend)
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 14) {
+                            // Zoom Section
+                            HStack(spacing: 6) {
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        viewModel.zoomScale = max(0.25, viewModel.zoomScale - 0.25)
+                                    }
+                                }) {
+                                    Image(systemName: "minus.magnifyingglass")
+                                        .font(.subheadline)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Zoom Out")
+                                
+                                Slider(value: $viewModel.zoomScale, in: 0.25...4.0)
+                                    .frame(width: 90)
+                                
+                                Button(action: {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        viewModel.zoomScale = min(4.0, viewModel.zoomScale + 0.25)
+                                    }
+                                }) {
+                                    Image(systemName: "plus.magnifyingglass")
+                                        .font(.subheadline)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Zoom In")
+                                
+                                Text("\(Int(viewModel.zoomScale * 100))%")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 36, alignment: .trailing)
+                                
+                                Button("Fit") {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        viewModel.zoomScale = 1.0
+                                        viewModel.panOffset = .zero
+                                    }
+                                }
+                                .controlSize(.small)
+                                .buttonStyle(.bordered)
+                                .help("Reset Zoom & Centering")
+                            }
+                            
+                            Divider()
+                                .frame(height: 16)
+                            
+                            // Blend Slider Section
+                            HStack(spacing: 6) {
+                                Image(systemName: "circle.lefthalf.filled")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("Blend:")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Slider(value: $viewModel.blendOpacity, in: 0.0...1.0)
+                                    .frame(width: 80)
+                                Text("\(Int(viewModel.blendOpacity * 100))%")
+                                    .font(.caption)
+                                    .monospacedDigit()
+                                    .foregroundColor(.secondary)
+                                    .frame(width: 32, alignment: .trailing)
+                            }
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 2)
+                        .padding(.bottom, 16)
+                    }
                 } else {
                     VStack(spacing: 12) {
                         Image(systemName: "photo.on.rectangle.angled")
@@ -95,8 +170,6 @@ private final class NSMosaicView: NSView {
     var strokeWidth: Double = 0.5
     var onTileTapped: ((MacOSaiXTile) -> Void)?
     
-    private var thumbCache: [URL: CGImage] = [:]
-    
     override var isFlipped: Bool { true }
     
     override func mouseDown(with event: NSEvent) {
@@ -124,6 +197,15 @@ private final class NSMosaicView: NSView {
         }
     }
     
+    /// Draws an image right-side up inside a flipped NSView context
+    private func drawUprightImage(_ image: CGImage, in rect: CGRect, in context: CGContext) {
+        context.saveGState()
+        context.translateBy(x: rect.minX, y: rect.maxY)
+        context.scaleBy(x: 1.0, y: -1.0)
+        context.draw(image, in: CGRect(x: 0, y: 0, width: rect.width, height: rect.height))
+        context.restoreGState()
+    }
+    
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext,
               let engine = self.engine,
@@ -149,27 +231,7 @@ private final class NSMosaicView: NSView {
             context.clip()
             
             if let imageURL = tile.bestImageURL {
-                var img: CGImage? = thumbCache[imageURL]
-                if img == nil {
-                    let opts: [CFString: Any] = [
-                        kCGImageSourceShouldCache: false
-                    ]
-                    if let src = CGImageSourceCreateWithURL(imageURL as CFURL, opts as CFDictionary) {
-                        let thumbOpts: [CFString: Any] = [
-                            kCGImageSourceCreateThumbnailFromImageAlways: true,
-                            kCGImageSourceThumbnailMaxPixelSize: 120,
-                            kCGImageSourceCreateThumbnailWithTransform: true
-                        ]
-                        img = CGImageSourceCreateThumbnailAtIndex(src, 0, thumbOpts as CFDictionary)
-                        if let cached = img {
-                            if thumbCache.count < 300 {
-                                thumbCache[imageURL] = cached
-                            }
-                        }
-                    }
-                }
-                
-                if let cgImg = img {
+                if let cgImg = MosaicThumbnailCache.shared.thumbnail(for: imageURL) {
                     let b = tile.geometry.bounds
                     let imgW = CGFloat(cgImg.width)
                     let imgH = CGFloat(cgImg.height)
@@ -179,11 +241,12 @@ private final class NSMosaicView: NSView {
                     let drawX = b.midX - drawW / 2.0
                     let drawY = b.midY - drawH / 2.0
                     
-                    context.draw(cgImg, in: CGRect(x: drawX, y: drawY, width: drawW, height: drawH))
+                    // Draw tile image right-side up
+                    drawUprightImage(cgImg, in: CGRect(x: drawX, y: drawY, width: drawW, height: drawH), in: context)
                 }
             } else {
-                // If not yet matched, draw dimmed snippet of original image so wireframe is visible
-                context.draw(target, in: CGRect(origin: .zero, size: mSize))
+                // If not yet matched, draw dimmed snippet of original image right-side up
+                drawUprightImage(target, in: CGRect(origin: .zero, size: mSize), in: context)
                 context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.35))
                 context.fill(tile.geometry.bounds)
             }
@@ -200,11 +263,11 @@ private final class NSMosaicView: NSView {
             }
         }
         
-        // Classic "Blend with Original" overlay
+        // Classic "Blend with Original" overlay, right-side up
         if blendOpacity > 0.01 {
             context.saveGState()
             context.setAlpha(CGFloat(blendOpacity))
-            context.draw(target, in: CGRect(origin: .zero, size: mSize))
+            drawUprightImage(target, in: CGRect(origin: .zero, size: mSize), in: context)
             context.restoreGState()
         }
         

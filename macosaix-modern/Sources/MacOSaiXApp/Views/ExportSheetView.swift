@@ -50,10 +50,12 @@ public struct ExportSheetView: View {
                     .fontWeight(.medium)
                 
                 Picker("Format", selection: $viewModel.exportFormat) {
-                    Text("PNG (Lossless, High Quality)").tag("PNG")
-                    Text("JPEG (Smaller file size)").tag("JPG")
+                    Text("HEIC (Recommended)").tag("HEIC")
+                    Text("AVIF (Modern AV1)").tag("AVIF")
+                    Text("PNG (Lossless)").tag("PNG")
+                    Text("JPEG (Universal)").tag("JPG")
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.radioGroup)
             }
             
             if let error = viewModel.exportErrorMessage {
@@ -70,48 +72,21 @@ public struct ExportSheetView: View {
                 Spacer()
                 
                 Button(action: startExport) {
-                    if viewModel.isExporting {
-                        ProgressView()
-                            .controlSize(.small)
-                            .padding(.trailing, 4)
-                    }
-                    Text(viewModel.isExporting ? "Exporting..." : "Export...")
+                    Text("Choose Destination & Export...")
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(viewModel.isExporting)
             }
         }
         .padding(24)
-        .frame(width: 360)
+        .frame(width: 380)
     }
     
     private func startExport() {
         let width = viewModel.exportIsCustom ? viewModel.exportCustomWidth : viewModel.exportPreset
         let format = viewModel.exportFormat
-        let panel = NSSavePanel()
-        panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "Mosaic.\(format.lowercased())"
-        panel.allowedContentTypes = (format == "JPG") ? [.jpeg] : [.png]
-        
-        if panel.runModal() == .OK, let destinationURL = panel.url {
-            viewModel.isExporting = true
-            viewModel.exportErrorMessage = nil
-            
-            Task.detached(priority: .userInitiated) {
-                do {
-                    try await viewModel.exportMosaic(outputWidth: width, destinationURL: destinationURL)
-                    await MainActor.run {
-                        viewModel.isExporting = false
-                        dismiss()
-                        NSWorkspace.shared.activateFileViewerSelecting([destinationURL])
-                    }
-                } catch {
-                    await MainActor.run {
-                        viewModel.isExporting = false
-                        viewModel.exportErrorMessage = "Export failed: \(error.localizedDescription)"
-                    }
-                }
-            }
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            viewModel.presentSavePanelAndExport(outputWidth: width, format: format)
         }
     }
 }

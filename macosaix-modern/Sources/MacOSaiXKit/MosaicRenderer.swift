@@ -40,9 +40,10 @@ public final class MosaicRenderer {
         context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1.0))
         context.fill(CGRect(x: 0, y: 0, width: outputWidth, height: outputHeight))
         
-        // Transform context from mosaic coordinate space to output pixel space
+        // Transform context from mosaic coordinate space to output pixel space, with (0,0) at top-left
         context.saveGState()
-        context.scaleBy(x: scale, y: scale)
+        context.translateBy(x: 0, y: CGFloat(outputHeight))
+        context.scaleBy(x: scale, y: -scale)
         
         // Render each tile with bounded memory footprint
         for tile in tiles {
@@ -81,7 +82,12 @@ public final class MosaicRenderer {
                         let drawX = bounds.midX - drawW / 2.0
                         let drawY = bounds.midY - drawH / 2.0
                         
-                        context.draw(cgImage, in: CGRect(x: drawX, y: drawY, width: drawW, height: drawH))
+                        // Draw upright inside flipped context
+                        context.saveGState()
+                        context.translateBy(x: drawX, y: drawY + drawH)
+                        context.scaleBy(x: 1.0, y: -1.0)
+                        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: drawW, height: drawH))
+                        context.restoreGState()
                     }
                 } else {
                     // Fallback fill
@@ -112,19 +118,29 @@ public final class MosaicRenderer {
         
         let ext = outputURL.pathExtension.lowercased()
         let uti: CFString
-        if ext == "jpg" || ext == "jpeg" {
+        switch ext {
+        case "heic", "heif":
+            uti = "public.heic" as CFString
+        case "avif":
+            uti = "public.avif" as CFString
+        case "jpg", "jpeg":
             uti = UTType.jpeg.identifier as CFString
-        } else {
+        default:
             uti = UTType.png.identifier as CFString
         }
         
         guard let destination = CGImageDestinationCreateWithURL(outputURL as CFURL, uti, 1, nil) else {
-            throw NSError(domain: "MosaicRenderer", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create image destination at \(outputURL.path)"])
+            throw NSError(domain: "MosaicRenderer", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to create image destination for \(ext.uppercased()) at \(outputURL.path)"])
         }
         
-        let exportProperties: [CFString: Any] = [
-            kCGImageDestinationLossyCompressionQuality: 0.95
-        ]
+        let exportProperties: [CFString: Any]
+        if ext == "png" {
+            exportProperties = [:]
+        } else {
+            exportProperties = [
+                kCGImageDestinationLossyCompressionQuality: 0.92
+            ]
+        }
         
         CGImageDestinationAddImage(destination, finalCGImage, exportProperties as CFDictionary)
         if !CGImageDestinationFinalize(destination) {

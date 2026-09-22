@@ -43,7 +43,7 @@ public struct MainWindowView: View {
                 
                 // Status & Progress indicator
                 HStack(spacing: 8) {
-                    if viewModel.isRunning && !viewModel.isPaused {
+                    if (viewModel.isRunning && !viewModel.isPaused) || viewModel.isExporting {
                         ProgressView()
                             .controlSize(.small)
                     }
@@ -51,7 +51,10 @@ public struct MainWindowView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                 }
+                .frame(maxWidth: 280)
+                .layoutPriority(0)
                 
                 Spacer()
                 
@@ -64,9 +67,10 @@ public struct MainWindowView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Slider(value: $viewModel.blendOpacity, in: 0.0...1.0)
-                        .frame(width: 90)
+                        .frame(width: 85)
                 }
                 .disabled(viewModel.targetCGImage == nil)
+                .layoutPriority(2)
                 
                 Divider()
                 

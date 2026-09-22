@@ -4,6 +4,7 @@ import CoreGraphics
 import ImageIO
 import MacOSaiXCore
 import MacOSaiXKit
+import UniformTypeIdentifiers
 
 @MainActor
 public final class MosaicViewModel: ObservableObject {
@@ -73,7 +74,7 @@ public final class MosaicViewModel: ObservableObject {
     @Published public var exportPreset: Int = 3000
     @Published public var exportCustomWidth: Int = 3000
     @Published public var exportIsCustom: Bool = false
-    @Published public var exportFormat: String = "PNG"
+    @Published public var exportFormat: String = "HEIC"
     @Published public var isExporting: Bool = false
     @Published public var exportErrorMessage: String?
     
@@ -280,15 +281,58 @@ public final class MosaicViewModel: ObservableObject {
     }
     
     // MARK: - Export
-    public func exportMosaic(outputWidth: Int, destinationURL: URL) throws {
+    public func presentSavePanelAndExport(outputWidth: Int, format: String) {
         guard let engine = self.engine else { return }
-        let renderer = MosaicRenderer()
-        try renderer.render(
-            tiles: engine.tiles,
-            mosaicSize: engine.mosaicSize,
-            outputWidth: outputWidth,
-            strokeWidth: Float(strokeWidth),
-            outputURL: destinationURL
-        )
+        
+        let panel = NSSavePanel()
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "Mosaic.\(format.lowercased())"
+        
+        let utType: UTType
+        switch format.uppercased() {
+        case "HEIC":
+            utType = .heic
+        case "AVIF":
+            utType = UTType(filenameExtension: "avif") ?? .png
+        case "JPG", "JPEG":
+            utType = .jpeg
+        default:
+            utType = .png
+        }
+        panel.allowedContentTypes = [utType]
+        
+        panel.begin { [weak self] response in
+            guard let self = self, response == .OK, let destinationURL = panel.url else { return }
+            
+            self.isExporting = true
+            self.statusMessage = "Exporting \(outputWidth)px mosaic (\(format.uppercased()))..."
+            
+            let tilesCopy = engine.tiles
+            let mosaicSizeCopy = engine.mosaicSize
+            let stroke = Float(self.strokeWidth)
+            
+            Task.detached(priority: .userInitiated) {
+                let renderer = MosaicRenderer()
+                do {
+                    try renderer.render(
+                        tiles: tilesCopy,
+                        mosaicSize: mosaicSizeCopy,
+                        outputWidth: outputWidth,
+                        strokeWidth: stroke,
+                        outputURL: destinationURL
+                    )
+                    await MainActor.run {
+                        self.isExporting = false
+                        self.statusMessage = "Export complete: \(destinationURL.lastPathComponent)"
+                        NSWorkspace.shared.activateFileViewerSelecting([destinationURL])
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.isExporting = false
+                        self.statusMessage = "Export failed: \(error.localizedDescription)"
+                    }
+                }
+            }
+        }
     }
 }
