@@ -420,7 +420,8 @@ public final class MosaicViewModel: ObservableObject {
         
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "Mosaic.\(format.lowercased())"
+        let defaultBase = targetImageURL?.deletingPathExtension().lastPathComponent ?? "Mosaic"
+        panel.nameFieldStringValue = defaultBase
         
         let utType: UTType
         switch format.uppercased() {
@@ -437,6 +438,16 @@ public final class MosaicViewModel: ObservableObject {
         
         panel.begin { [weak self] response in
             guard let self = self, response == .OK, let destinationURL = panel.url else { return }
+            
+            var finalURL = destinationURL
+            let ext = (utType.preferredFilenameExtension ?? format).lowercased()
+            while finalURL.pathExtension.lowercased() == ext,
+                  finalURL.deletingPathExtension().pathExtension.lowercased() == ext {
+                finalURL = finalURL.deletingPathExtension()
+            }
+            if finalURL.pathExtension.lowercased() != ext {
+                finalURL = finalURL.appendingPathExtension(ext)
+            }
             
             self.isExporting = true
             self.statusMessage = "Exporting \(outputWidth)px mosaic (\(format.uppercased()))..."
@@ -513,8 +524,11 @@ public final class MosaicViewModel: ObservableObject {
         
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
-        let defaultName = (targetImageURL?.deletingPathExtension().lastPathComponent ?? "Mosaic") + ".macosaix"
-        panel.nameFieldStringValue = defaultName
+        var cleanName = currentProjectURL?.deletingPathExtension().lastPathComponent ?? targetImageURL?.deletingPathExtension().lastPathComponent ?? "Mosaic"
+        while cleanName.lowercased().hasSuffix(".macosaix") {
+            cleanName = String(cleanName.dropLast(9))
+        }
+        panel.nameFieldStringValue = cleanName
         if let macosaixType = UTType(filenameExtension: "macosaix") {
             panel.allowedContentTypes = [macosaixType]
         }
@@ -522,7 +536,15 @@ public final class MosaicViewModel: ObservableObject {
         
         panel.begin { [weak self] response in
             guard let self = self, response == .OK, let destinationURL = panel.url else { return }
-            self.saveProject(to: destinationURL)
+            var finalURL = destinationURL
+            while finalURL.pathExtension.lowercased() == "macosaix",
+                  finalURL.deletingPathExtension().pathExtension.lowercased() == "macosaix" {
+                finalURL = finalURL.deletingPathExtension()
+            }
+            if finalURL.pathExtension.lowercased() != "macosaix" {
+                finalURL = finalURL.appendingPathExtension("macosaix")
+            }
+            self.saveProject(to: finalURL)
         }
     }
     
