@@ -16,7 +16,7 @@ func printUsage() {
       --target <path>        Target image to turn into a mosaic (HEIC, JPEG, PNG, etc.)
       --sources <folder>     Folder of source photos (HEIC, JPEG, PNG, etc.)
       --output <path>        Output image path (default: mosaic.png)
-      --shape <type>         Tile shape: puzzle | hex | rect (default: puzzle)
+      --shape <type>         Tile shape: rect | hex | puzzle (default: rect)
       --across <N>           Tiles horizontally (default: 30)
       --down <N>             Tiles vertically (default: 20)
       --curviness <float>    Puzzle edge curviness 0.0 - 1.0 (default: 0.5)
@@ -67,7 +67,7 @@ func main() async {
     }
     
     let outputPath = args["output"] ?? "mosaic.png"
-    let shapeStr = args["shape"]?.lowercased() ?? "puzzle"
+    let shapeStr = args["shape"]?.lowercased() ?? "rect"
     let across = Int(args["across"] ?? "30") ?? 30
     let down = Int(args["down"] ?? "20") ?? 20
     let curviness = Float(args["curviness"] ?? "0.5") ?? 0.5
@@ -81,10 +81,10 @@ func main() async {
     switch shapeStr {
     case "hex", "hexagonal":
         shapeType = .hexagonal
-    case "rect", "rectangular":
-        shapeType = .rectangular
-    default:
+    case "puzzle":
         shapeType = .puzzle
+    default:
+        shapeType = .rectangular
     }
     
     let colorMetric: MacOSaiXColorMetric = (metricStr == "rgb") ? .RGB : .riemersma

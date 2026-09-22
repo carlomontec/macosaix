@@ -17,7 +17,7 @@ public struct SourceImageCandidate: Sendable {
 
 public final class ImageLoader: @unchecked Sendable {
     private let supportedExtensions: Set<String> = [
-        "heic", "heif", "jpg", "jpeg", "png", "tiff", "tif", "webp", "bmp", "gif"
+        "heic", "heif", "avif", "jpg", "jpeg", "png", "tiff", "tif", "webp", "bmp", "gif"
     ]
     
     public init() {}

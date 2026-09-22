@@ -19,12 +19,12 @@ public struct SidebarView: View {
                 }
                 
                 // Section 2: Tile Shapes
-                GroupBox(label: Label("Tile Shapes", systemImage: "puzzlepiece.extension")) {
+                GroupBox(label: Label("Tile Shapes", systemImage: "square.grid.2x2")) {
                     VStack(alignment: .leading, spacing: 12) {
                         Picker("Shape", selection: $viewModel.shapeType) {
-                            Text("Puzzle").tag(MacOSaiXShapeType.puzzle)
+                            Text("Square").tag(MacOSaiXShapeType.rectangular)
                             Text("Hexagon").tag(MacOSaiXShapeType.hexagonal)
-                            Text("Rectangle").tag(MacOSaiXShapeType.rectangular)
+                            Text("Puzzle").tag(MacOSaiXShapeType.puzzle)
                         }
                         .pickerStyle(.segmented)
                         .disabled(viewModel.isRunning)
@@ -106,7 +106,7 @@ public struct SidebarView: View {
                 GroupBox(label: Label("Photo Sources", systemImage: "folder")) {
                     VStack(alignment: .leading, spacing: 8) {
                         if viewModel.sourceFolders.isEmpty {
-                            Text("No folders added yet.")
+                            Text("No folders added yet.\nDrag & drop folders here or click + Add Folder.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .padding(.vertical, 4)
@@ -174,6 +174,18 @@ public struct SidebarView: View {
                         }
                     }
                     .padding(.top, 4)
+                }
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(viewModel.isSourcesDropTargeted ? Color.accentColor : Color.clear, lineWidth: 2)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(viewModel.isSourcesDropTargeted ? Color.accentColor.opacity(0.08) : Color.clear)
+                        )
+                )
+                .onDrop(of: [.fileURL], isTargeted: $viewModel.isSourcesDropTargeted) { providers in
+                    handleDroppedSources(providers)
+                    return true
                 }
                 
                 // Section 4: Image Usage Constraints
@@ -251,6 +263,26 @@ public struct SidebarView: View {
         if panel.runModal() == .OK {
             for url in panel.urls {
                 viewModel.addSourceFolder(url)
+            }
+        }
+    }
+    
+    private func handleDroppedSources(_ providers: [NSItemProvider]) {
+        for provider in providers {
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                guard let fileURL = url else { return }
+                var isDir: ObjCBool = false
+                if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir) {
+                    DispatchQueue.main.async {
+                        if isDir.boolValue {
+                            viewModel.addSourceFolder(fileURL)
+                        } else {
+                            // If an image file was dropped, add its containing folder
+                            let folder = fileURL.deletingLastPathComponent()
+                            viewModel.addSourceFolder(folder)
+                        }
+                    }
+                }
             }
         }
     }

@@ -49,28 +49,55 @@
     
     CGContextSetInterpolationQuality(context, kCGInterpolationHigh);
     
-    // Invert Y coordinate space because CGImage uses top-down / bottom-up convention
-    // Draw the tile's sub-rectangle of targetImage into [0, 0, 16, 16]
-    CGRect bounds = _geometry.bounds;
-    
-    // Scale from mosaic size to target image pixel size
     const size_t imgWidth = CGImageGetWidth(targetImage);
     const size_t imgHeight = CGImageGetHeight(targetImage);
     
-    const float scaleX = (float)imgWidth / (float)mosaicSize.width;
-    const float scaleY = (float)imgHeight / (float)mosaicSize.height;
+    if (imgWidth == 0 || imgHeight == 0 || mosaicSize.width <= 0.0 || mosaicSize.height <= 0.0) {
+        CGContextRelease(context);
+        return;
+    }
     
-    CGRect cropRect = CGRectMake(bounds.origin.x * scaleX,
-                                 bounds.origin.y * scaleY,
-                                 bounds.size.width * scaleX,
-                                 bounds.size.height * scaleY);
+    CGRect bounds = _geometry.bounds;
     
-    CGImageRef subImage = CGImageCreateWithImageInRect(targetImage, cropRect);
-    if (subImage) {
-        CGContextDrawImage(context, CGRectMake(0, 0, size, size), subImage);
-        CGImageRelease(subImage);
+    const double scaleX = (double)imgWidth / (double)mosaicSize.width;
+    const double scaleY = (double)imgHeight / (double)mosaicSize.height;
+    
+    // Scale from mosaic size to target image pixel size
+    double rawX = bounds.origin.x * scaleX;
+    double rawY = bounds.origin.y * scaleY;
+    double rawW = bounds.size.width * scaleX;
+    double rawH = bounds.size.height * scaleY;
+    
+    // Clamp to valid image pixel coordinates
+    if (rawX < 0.0) { rawW += rawX; rawX = 0.0; }
+    if (rawY < 0.0) { rawH += rawY; rawY = 0.0; }
+    if (rawX + rawW > (double)imgWidth) { rawW = (double)imgWidth - rawX; }
+    if (rawY + rawH > (double)imgHeight) { rawH = (double)imgHeight - rawY; }
+    
+    if (rawW > 0.5 && rawH > 0.5) {
+        size_t intX = (size_t)floor(rawX);
+        size_t intY = (size_t)floor(rawY);
+        size_t intW = (size_t)ceil(rawW);
+        size_t intH = (size_t)ceil(rawH);
+        
+        if (intX >= imgWidth) intX = imgWidth - 1;
+        if (intY >= imgHeight) intY = imgHeight - 1;
+        if (intX + intW > imgWidth) intW = imgWidth - intX;
+        if (intY + intH > imgHeight) intH = imgHeight - intY;
+        
+        if (intW > 0 && intH > 0) {
+            CGRect cropRect = CGRectMake(intX, intY, intW, intH);
+            CGImageRef subImage = CGImageCreateWithImageInRect(targetImage, cropRect);
+            if (subImage) {
+                CGContextDrawImage(context, CGRectMake(0, 0, size, size), subImage);
+                CGImageRelease(subImage);
+            } else {
+                CGContextDrawImage(context, CGRectMake(0, 0, size, size), targetImage);
+            }
+        } else {
+            CGContextDrawImage(context, CGRectMake(0, 0, size, size), targetImage);
+        }
     } else {
-        // Fallback: draw full image positioned
         CGContextDrawImage(context, CGRectMake(0, 0, size, size), targetImage);
     }
     

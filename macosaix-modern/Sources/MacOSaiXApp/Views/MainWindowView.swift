@@ -64,6 +64,23 @@ public struct MainWindowView: View {
             }
             
             ToolbarItemGroup(placement: .primaryAction) {
+                // Open Project
+                Button(action: {
+                    viewModel.openProjectPrompt()
+                }) {
+                    Image(systemName: "folder")
+                }
+                .help("Open Project (⌘O)")
+                
+                // Save Project
+                Button(action: {
+                    viewModel.saveProject()
+                }) {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .help("Save Project (⌘S)")
+                .disabled(viewModel.targetCGImage == nil)
+                
                 // Export Button
                 Button(action: {
                     viewModel.isExportSheetPresented = true

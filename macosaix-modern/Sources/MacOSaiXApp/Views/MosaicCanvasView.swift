@@ -25,23 +25,30 @@ public struct MosaicCanvasView: View {
                         strokeWidth: viewModel.strokeWidth,
                         onTileTapped: { tile in
                             viewModel.selectedTile = tile
+                        },
+                        onPan: { delta in
+                            viewModel.panOffset = CGSize(
+                                width: viewModel.panOffset.width + delta.width,
+                                height: viewModel.panOffset.height + delta.height
+                            )
+                            viewModel.dragBaseOffset = viewModel.panOffset
+                        },
+                        onMagnify: { factor in
+                            viewModel.zoomScale = max(0.25, min(4.0, viewModel.zoomScale * (1.0 + factor)))
                         }
                     )
                     .scaleEffect(viewModel.zoomScale)
                     .offset(viewModel.panOffset)
                     .gesture(
-                        MagnificationGesture()
-                            .onChanged { val in
-                                viewModel.zoomScale = max(0.25, min(4.0, val))
-                            }
-                    )
-                    .gesture(
                         DragGesture()
                             .onChanged { val in
-                                viewModel.panOffset = val.translation
+                                viewModel.panOffset = CGSize(
+                                    width: viewModel.dragBaseOffset.width + val.translation.width,
+                                    height: viewModel.dragBaseOffset.height + val.translation.height
+                                )
                             }
                             .onEnded { _ in
-                                // retain offset
+                                viewModel.dragBaseOffset = viewModel.panOffset
                             }
                     )
                     .padding(20)
@@ -88,6 +95,7 @@ public struct MosaicCanvasView: View {
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         viewModel.zoomScale = 1.0
                                         viewModel.panOffset = .zero
+                                        viewModel.dragBaseOffset = .zero
                                     }
                                 }
                                 .controlSize(.small)
@@ -146,10 +154,14 @@ private struct MosaicRepresentable: NSViewRepresentable {
     let blendOpacity: Double
     let strokeWidth: Double
     let onTileTapped: (MacOSaiXTile) -> Void
+    let onPan: (CGSize) -> Void
+    let onMagnify: (CGFloat) -> Void
     
     func makeNSView(context: Context) -> NSMosaicView {
         let view = NSMosaicView()
         view.onTileTapped = onTileTapped
+        view.onPan = onPan
+        view.onMagnify = onMagnify
         return view
     }
     
@@ -159,6 +171,8 @@ private struct MosaicRepresentable: NSViewRepresentable {
         nsView.blendOpacity = blendOpacity
         nsView.strokeWidth = strokeWidth
         nsView.onTileTapped = onTileTapped
+        nsView.onPan = onPan
+        nsView.onMagnify = onMagnify
         nsView.needsDisplay = true
     }
 }
@@ -169,8 +183,29 @@ private final class NSMosaicView: NSView {
     var blendOpacity: Double = 0.0
     var strokeWidth: Double = 0.5
     var onTileTapped: ((MacOSaiXTile) -> Void)?
+    var onPan: ((CGSize) -> Void)?
+    var onMagnify: ((CGFloat) -> Void)?
     
     override var isFlipped: Bool { true }
+    
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        return true
+    }
+    
+    override func scrollWheel(with event: NSEvent) {
+        if event.modifierFlags.contains(.command) {
+            let factor = event.scrollingDeltaY * 0.005
+            onMagnify?(factor)
+        } else {
+            let dx = event.scrollingDeltaX
+            let dy = event.scrollingDeltaY
+            onPan?(CGSize(width: dx, height: dy))
+        }
+    }
+    
+    override func magnify(with event: NSEvent) {
+        onMagnify?(event.magnification)
+    }
     
     override func mouseDown(with event: NSEvent) {
         guard let engine = self.engine else { return }

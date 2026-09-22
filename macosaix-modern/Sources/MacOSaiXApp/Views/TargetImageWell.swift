@@ -46,7 +46,7 @@ public struct TargetImageWell: View {
                         .font(.callout)
                         .fontWeight(.medium)
                     
-                    Text("Supports HEIC, JPEG, PNG, TIFF")
+                    Text("Supports HEIC, AVIF, JPEG, PNG, WebP, TIFF")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
@@ -76,7 +76,11 @@ public struct TargetImageWell: View {
             _ = provider.loadObject(ofClass: URL.self) { url, _ in
                 guard let fileURL = url else { return }
                 DispatchQueue.main.async {
-                    viewModel.setTargetImage(from: fileURL)
+                    if fileURL.pathExtension.lowercased() == "macosaix" {
+                        viewModel.openProject(from: fileURL)
+                    } else {
+                        viewModel.setTargetImage(from: fileURL)
+                    }
                 }
             }
             return true
@@ -88,7 +92,15 @@ public struct TargetImageWell: View {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
-        panel.allowedContentTypes = [.image, .heic, .jpeg, .png, .tiff]
+        
+        var types: [UTType] = [.image, .heic, .jpeg, .png, .tiff]
+        if let avifType = UTType(filenameExtension: "avif") {
+            types.append(avifType)
+        }
+        if let webpType = UTType(filenameExtension: "webp") {
+            types.append(webpType)
+        }
+        panel.allowedContentTypes = types
         panel.prompt = "Choose Target"
         
         if panel.runModal() == .OK, let url = panel.url {

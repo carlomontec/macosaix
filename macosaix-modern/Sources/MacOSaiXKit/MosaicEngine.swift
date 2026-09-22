@@ -41,24 +41,56 @@ public final class MosaicEngine: @unchecked Sendable {
     }
     
     /// Loads the target image from a URL and prepares tile geometries, masks, and snippets.
-    public func prepare(targetURL: URL) throws {
+    /// Downsamples images larger than maxDimension (default 2048) to avoid memory spikes and freezes.
+    public func prepare(targetURL: URL, maxDimension: Int = 2048) throws {
         let options: [CFString: Any] = [
-            kCGImageSourceShouldCache: true
+            kCGImageSourceShouldCache: false
         ]
-        guard let source = CGImageSourceCreateWithURL(targetURL as CFURL, options as CFDictionary),
-              let img = CGImageSourceCreateImageAtIndex(source, 0, [
-                  kCGImageSourceCreateThumbnailWithTransform: true
-              ] as CFDictionary) else {
+        guard let source = CGImageSourceCreateWithURL(targetURL as CFURL, options as CFDictionary) else {
+            throw NSError(domain: "MosaicEngine", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to open target image: \(targetURL.path)"])
+        }
+        
+        let thumbOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxDimension,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true
+        ]
+        guard let img = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbOptions as CFDictionary) else {
             throw NSError(domain: "MosaicEngine", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to load target image: \(targetURL.path)"])
         }
         
         try prepare(with: img)
     }
     
+    /// Normalizes any input CGImage (including 10-bit AVIF, HDR HEIC, IOSurface wrappers)
+    /// into a standard 8-bit per channel sRGB in-memory raster CGImage.
+    public static func normalizeToStandardSRGB(_ image: CGImage) -> CGImage {
+        let width = image.width
+        let height = image.height
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        let bytesPerRow = width * 4
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+        ) else {
+            return image
+        }
+        context.interpolationQuality = .high
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? image
+    }
+    
     /// Prepares tile geometries, masks, and snippets using an in-memory CGImage.
     public func prepare(with image: CGImage) throws {
-        self.targetImage = image
-        self.mosaicSize = CGSize(width: image.width, height: image.height)
+        let normalizedImage = Self.normalizeToStandardSRGB(image)
+        self.targetImage = normalizedImage
+        self.mosaicSize = CGSize(width: normalizedImage.width, height: normalizedImage.height)
         self.isCancelled = false
         self.isPaused = false
         
@@ -76,7 +108,7 @@ public final class MosaicEngine: @unchecked Sendable {
         self.tiles = geometries.map { geom in
             let tile = MacOSaiXTile(geometry: geom)
             tile.rasterizeMask(withResolution: 16)
-            tile.extractTargetThumbnail(from: image, mosaicSize: self.mosaicSize)
+            tile.extractTargetThumbnail(from: normalizedImage, mosaicSize: self.mosaicSize)
             return tile
         }
     }
