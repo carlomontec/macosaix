@@ -142,6 +142,33 @@ public struct MosaicCanvasView: View {
                                     .monospacedDigit()
                                     .foregroundColor(.secondary)
                                     .frame(width: 30, alignment: .trailing)
+                                
+                                if viewModel.colorTransferStrength > 0.0 {
+                                    Button(action: {
+                                        viewModel.colorTransferStrength = 0.0
+                                    }) {
+                                        Image(systemName: "arrow.counterclockwise")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Reset color transfer to 0%")
+                                }
+                                
+                                Button(action: {
+                                    viewModel.showingColorTransferInfo.toggle()
+                                }) {
+                                    Image(systemName: "info.circle")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Learn about Reinhard Perceptual Color Transfer & Academic Citations")
+                                .popover(isPresented: $viewModel.showingColorTransferInfo, arrowEdge: .top) {
+                                    ColorTransferInfoView {
+                                        viewModel.showingColorTransferInfo = false
+                                    }
+                                }
                             }
                             .help("Reinhard Perceptual Color Transfer: statistically harmonizes photo colors with the target image")
                         }

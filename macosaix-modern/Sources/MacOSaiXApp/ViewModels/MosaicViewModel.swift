@@ -41,6 +41,7 @@ public final class MosaicViewModel: ObservableObject {
             canvasVersion += 1
         }
     }
+    @Published public var showingColorTransferInfo: Bool = false
     
     // MARK: - Image Sources State
     @Published public var sourceFolders: [URL] = []
