@@ -2,16 +2,30 @@ import Foundation
 import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
+import MacOSaiXCore
+
+extension MacOSaiXEdgeDescriptor: @retroactive @unchecked Sendable {}
 
 public struct SourceImageCandidate: Sendable {
     public let identifier: String
     public let url: URL
     public let thumbnailPixels: Data // 16x16 RGBA (1024 bytes)
+    public let edgeDescriptor: MacOSaiXEdgeDescriptor
     
-    public init(identifier: String, url: URL, thumbnailPixels: Data) {
+    public init(identifier: String, url: URL, thumbnailPixels: Data, edgeDescriptor: MacOSaiXEdgeDescriptor? = nil) {
         self.identifier = identifier
         self.url = url
         self.thumbnailPixels = thumbnailPixels
+        if let ed = edgeDescriptor {
+            self.edgeDescriptor = ed
+        } else {
+            self.edgeDescriptor = thumbnailPixels.withUnsafeBytes { ptr -> MacOSaiXEdgeDescriptor in
+                guard let base = ptr.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                    return MacOSaiXEdgeDescriptor()
+                }
+                return MacOSaiXComputeEdgeDescriptor(base, 16, 16)
+            }
+        }
     }
 }
 

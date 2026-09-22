@@ -18,6 +18,7 @@ public final class MosaicEngine: @unchecked Sendable {
     
     public var isCancelled: Bool = false
     public var isPaused: Bool = false
+    public var edgeWeight: Float = 0.0
     
     /// Optional callback called on match updates (for live GUI rendering).
     public var onTileUpdated: ((_ tileIndex: Int) -> Void)?
@@ -29,7 +30,8 @@ public final class MosaicEngine: @unchecked Sendable {
         curviness: Float,
         maxReuse: Int = 0,
         minDistance: Int = 0,
-        metric: MacOSaiXColorMetric = .riemersma
+        metric: MacOSaiXColorMetric = .riemersma,
+        edgeWeight: Float = 0.0
     ) {
         self.shapeType = shapeType
         self.tilesAcross = tilesAcross
@@ -38,6 +40,7 @@ public final class MosaicEngine: @unchecked Sendable {
         self.maxReuse = maxReuse
         self.minDistance = minDistance
         self.metric = metric
+        self.edgeWeight = edgeWeight
     }
     
     /// Loads the target image from a URL and prepares tile geometries, masks, and snippets.
@@ -134,11 +137,14 @@ public final class MosaicEngine: @unchecked Sendable {
             
             let score = matcher.compareTargetPixels(
                 targetBytes,
+                targetEdgeDesc: tile.edgeDescriptor,
                 candidatePixels: candidatePixels,
+                candidateEdgeDesc: candidate.edgeDescriptor,
                 maskPixels: maskBytes,
                 width: 16,
                 height: 16,
-                metric: metric
+                metric: metric,
+                edgeWeight: edgeWeight
             )
             
             // Only consider if it beats the current best match

@@ -3,6 +3,7 @@
 @implementation MacOSaiXTile {
     NSMutableData *_targetPixelsData;
     NSMutableData *_maskPixelsData;
+    MacOSaiXEdgeDescriptor _edgeDescriptor;
 }
 
 - (instancetype)initWithGeometry:(MacOSaiXTileGeometry *)geometry
@@ -13,8 +14,14 @@
         _bestScore = 1.0f; // 1.0 = worst match
         _bestImageIdentifier = nil;
         _bestImageURL = nil;
+        memset(&_edgeDescriptor, 0, sizeof(_edgeDescriptor));
     }
     return self;
+}
+
+- (MacOSaiXEdgeDescriptor)edgeDescriptor
+{
+    return _edgeDescriptor;
 }
 
 - (NSData *)targetPixels
@@ -102,6 +109,7 @@
     }
     
     CGContextRelease(context);
+    _edgeDescriptor = MacOSaiXComputeEdgeDescriptor(buffer, size, size);
 }
 
 - (void)rasterizeMaskWithResolution:(int)resolution

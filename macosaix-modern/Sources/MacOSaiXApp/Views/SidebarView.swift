@@ -230,6 +230,35 @@ public struct SidebarView: View {
                         .pickerStyle(.menu)
                         .font(.caption)
                         .disabled(viewModel.isRunning)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Text("Edge Alignment:")
+                                Button(action: {
+                                    viewModel.showingEdgeMatchingInfo.toggle()
+                                }) {
+                                    Image(systemName: "info.circle")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("Learn about Edge-Aware Directional Matching & Citations")
+                                .popover(isPresented: $viewModel.showingEdgeMatchingInfo, arrowEdge: .trailing) {
+                                    EdgeMatchingInfoView {
+                                        viewModel.showingEdgeMatchingInfo = false
+                                    }
+                                }
+                                
+                                Spacer()
+                                Text("\(Int(viewModel.edgeWeight * 100))%")
+                                    .foregroundColor(.secondary)
+                                    .monospacedDigit()
+                            }
+                            .font(.caption)
+                            Slider(value: $viewModel.edgeWeight, in: 0.0...1.0)
+                                .disabled(viewModel.isRunning)
+                                .help("Edge-Aware Directional Matching: aligns constituent photos' internal structural lines and contours with the target image")
+                        }
                     }
                     .padding(.top, 4)
                 }

@@ -33,6 +33,19 @@ public struct ColorStatistics: Sendable, Codable, Equatable {
 /// the target tile's color distribution, blended by an adjustable strength parameter.
 public enum ColorTransfer {
     
+    // MARK: - Fast Lookup Table (sRGB -> Linear)
+    
+    /// Precomputed 256-entry lookup table mapping 8-bit sRGB channel values to linear floating-point values.
+    /// Eliminates expensive transcendental pow() calls in tight pixel loops.
+    public static let srgbToLinearLUT: [Float] = {
+        var lut = [Float](repeating: 0, count: 256)
+        for b in 0...255 {
+            let v = Float(b) / 255.0
+            lut[b] = (v <= 0.04045) ? (v / 12.92) : pow((v + 0.055) / 1.055, 2.4)
+        }
+        return lut
+    }()
+    
     // MARK: - Color Space Conversions (sRGB <-> OKLab)
     
     @inline(__always)
@@ -95,9 +108,9 @@ public enum ColorTransfer {
         
         for i in 0..<count {
             let offset = i * 4
-            let r = srgbToLinear(Float(bytes[offset]) / 255.0)
-            let g = srgbToLinear(Float(bytes[offset + 1]) / 255.0)
-            let b = srgbToLinear(Float(bytes[offset + 2]) / 255.0)
+            let r = srgbToLinearLUT[Int(bytes[offset])]
+            let g = srgbToLinearLUT[Int(bytes[offset + 1])]
+            let b = srgbToLinearLUT[Int(bytes[offset + 2])]
             
             let lab = rgbToOKLab(r: r, g: g, b: b)
             oklabValues.append(lab)
@@ -162,8 +175,10 @@ public enum ColorTransfer {
     // MARK: - Color Transfer Execution
     
     /// Applies Reinhard color transfer to a candidate CGImage based on target statistics and a strength factor [0.0, 1.0].
+    /// Optionally accepts precomputed candidate `sourceStats` to avoid redundant statistical passes.
     public static func applyColorTransfer(
         to candidate: CGImage,
+        sourceStats: ColorStatistics? = nil,
         targetStats: ColorStatistics,
         strength: Float
     ) -> CGImage {
@@ -196,46 +211,52 @@ public enum ColorTransfer {
         ctx.interpolationQuality = .high
         ctx.draw(candidate, in: CGRect(x: 0, y: 0, width: width, height: height))
         
-        // 1. Compute candidate's own color statistics
-        let sourceStats = computeStatistics(fromRGBA: buffer, count: totalPixels)
+        // 1. Candidate's own color statistics (cached or computed)
+        let srcStats = sourceStats ?? computeStatistics(fromRGBA: buffer, count: totalPixels)
         
         // Scale factors: ratio of target variance to source variance
-        let scaleL = targetStats.stdL / sourceStats.stdL
-        let scaleA = targetStats.stdA / sourceStats.stdA
-        let scaleB = targetStats.stdB / sourceStats.stdB
+        let scaleL = targetStats.stdL / srcStats.stdL
+        let scaleA = targetStats.stdA / srcStats.stdA
+        let scaleB = targetStats.stdB / srcStats.stdB
         
         let lambda = max(0.0, min(1.0, strength))
+        
+        // Combined linear interpolation coefficients:
+        // final = (1 - lambda) * orig + lambda * ((orig - srcMean) * scale + targetMean)
+        //       = orig * ((1 - lambda) + lambda * scale) + lambda * (targetMean - srcMean * scale)
+        let coeffL = (1.0 - lambda) + lambda * scaleL
+        let biasL  = lambda * (targetStats.meanL - srcStats.meanL * scaleL)
+        
+        let coeffA = (1.0 - lambda) + lambda * scaleA
+        let biasA  = lambda * (targetStats.meanA - srcStats.meanA * scaleA)
+        
+        let coeffB = (1.0 - lambda) + lambda * scaleB
+        let biasB  = lambda * (targetStats.meanB - srcStats.meanB * scaleB)
         
         // 2. Transform pixels in OKLab space
         for i in 0..<totalPixels {
             let offset = i * 4
-            let rRaw = Float(buffer[offset]) / 255.0
-            let gRaw = Float(buffer[offset + 1]) / 255.0
-            let bRaw = Float(buffer[offset + 2]) / 255.0
+            let rRaw = buffer[offset]
+            let gRaw = buffer[offset + 1]
+            let bRaw = buffer[offset + 2]
             let aRaw = buffer[offset + 3]
             
-            // Linear RGB -> OKLab
-            let rLin = srgbToLinear(rRaw)
-            let gLin = srgbToLinear(gRaw)
-            let bLin = srgbToLinear(bRaw)
+            // Linear RGB via LUT -> OKLab
+            let rLin = srgbToLinearLUT[Int(rRaw)]
+            let gLin = srgbToLinearLUT[Int(gRaw)]
+            let bLin = srgbToLinearLUT[Int(bRaw)]
             
             let origLab = rgbToOKLab(r: rLin, g: gLin, b: bLin)
             
-            // Reinhard transfer formula:
-            // P_trans = (P_src - mean_src) * (std_target / std_src) + mean_target
-            let transL = (origLab.l - sourceStats.meanL) * scaleL + targetStats.meanL
-            let transA = (origLab.a - sourceStats.meanA) * scaleA + targetStats.meanA
-            let transB = (origLab.b - sourceStats.meanB) * scaleB + targetStats.meanB
-            
-            // Linear interpolation with original based on strength lambda
-            let finalL = (1.0 - lambda) * origLab.l + lambda * transL
-            let finalA = (1.0 - lambda) * origLab.a + lambda * transA
-            let finalB = (1.0 - lambda) * origLab.b + lambda * transB
+            // Fast Reinhard FMA transfer
+            let finalL = origLab.l * coeffL + biasL
+            let finalA = origLab.a * coeffA + biasA
+            let finalB = origLab.b * coeffB + biasB
             
             // OKLab -> sRGB
             let (rOut, gOut, bOut) = oklabToRGB(L: finalL, a: finalA, b: finalB)
             
-            buffer[offset] = UInt8(max(0.0, min(255.0, rOut * 255.0 + 0.5)))
+            buffer[offset]     = UInt8(max(0.0, min(255.0, rOut * 255.0 + 0.5)))
             buffer[offset + 1] = UInt8(max(0.0, min(255.0, gOut * 255.0 + 0.5)))
             buffer[offset + 2] = UInt8(max(0.0, min(255.0, bOut * 255.0 + 0.5)))
             buffer[offset + 3] = aRaw // Preserve original alpha
@@ -249,7 +270,7 @@ public enum ColorTransfer {
 
 private var tileStatsAssociationKey: UInt8 = 0
 
-private final class ColorStatisticsBox: @unchecked Sendable {
+final class ColorStatisticsBox: @unchecked Sendable {
     let value: ColorStatistics
     init(_ value: ColorStatistics) { self.value = value }
 }
