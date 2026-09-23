@@ -4,6 +4,17 @@
 
 #define MAX_COLOR_DIFF_RIEMERSMA (255.0f * 255.0f * 9.0f)
 #define MAX_COLOR_DIFF_RGB (255.0f * 255.0f * 3.0f)
+#define MAX_COLOR_DIFF_MONO (255.0f * 255.0f)
+
+static inline float colorDifferenceMono(unsigned char r1, unsigned char g1, unsigned char b1,
+                                        unsigned char r2, unsigned char g2, unsigned char b2)
+{
+    // ITU-R BT.709 perceptual luminance
+    int y1 = (int)(0.2126f * (float)r1 + 0.7152f * (float)g1 + 0.0722f * (float)b1 + 0.5f);
+    int y2 = (int)(0.2126f * (float)r2 + 0.7152f * (float)g2 + 0.0722f * (float)b2 + 0.5f);
+    int diff = y1 - y2;
+    return (float)(diff * diff);
+}
 
 static inline float colorDifferenceRiemersma(unsigned char r1, unsigned char g1, unsigned char b1,
                                             unsigned char r2, unsigned char g2, unsigned char b2)
@@ -51,7 +62,8 @@ static inline float colorDifferenceRGB(unsigned char r1, unsigned char g1, unsig
         return 1.0f;
     }
     
-    const float maxDiff = (metric == MacOSaiXColorMetricRiemersma) ? MAX_COLOR_DIFF_RIEMERSMA : MAX_COLOR_DIFF_RGB;
+    const float maxDiff = (metric == MacOSaiXColorMetricMonochrome) ? MAX_COLOR_DIFF_MONO :
+                          ((metric == MacOSaiXColorMetricRiemersma) ? MAX_COLOR_DIFF_RIEMERSMA : MAX_COLOR_DIFF_RGB);
     float accumulatedSimilarity = 0.0f;
     float totalPixelWeight = 0.0f;
     
@@ -77,9 +89,11 @@ static inline float colorDifferenceRGB(unsigned char r1, unsigned char g1, unsig
         unsigned char cg = candidatePixels[pixelOffset + 1];
         unsigned char cb = candidatePixels[pixelOffset + 2];
         
-        float diff = (metric == MacOSaiXColorMetricRiemersma) ?
-            colorDifferenceRiemersma(tr, tg, tb, cr, cg, cb) :
-            colorDifferenceRGB(tr, tg, tb, cr, cg, cb);
+        float diff = (metric == MacOSaiXColorMetricMonochrome) ?
+            colorDifferenceMono(tr, tg, tb, cr, cg, cb) :
+            ((metric == MacOSaiXColorMetricRiemersma) ?
+                colorDifferenceRiemersma(tr, tg, tb, cr, cg, cb) :
+                colorDifferenceRGB(tr, tg, tb, cr, cg, cb));
         
         float similarity = maxDiff - diff;
         if (similarity < 0.0f) similarity = 0.0f;

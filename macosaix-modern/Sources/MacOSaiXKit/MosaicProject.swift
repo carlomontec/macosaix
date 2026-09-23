@@ -33,12 +33,19 @@ public struct MacOSaiXProject: Codable, Sendable {
         public var tilesDown: Int
         public var curviness: Float
         public var strokeWidth: Double
+        public var strokeColor: String
         public var maxReuse: Int
         public var minDistance: Int
         public var colorMetric: String
         public var blendOpacity: Double
         public var colorTransferStrength: Double
         public var edgeWeight: Double
+        public var quadtreeMaxDepth: Int
+        public var quadtreeThreshold: Double
+        public var quadtreeBalanced: Bool
+        public var quadtreeDetailAlpha: Double
+        public var quadtreeAlgorithm: String
+        public var quadtreeMinTileDim: Double
         
         public init(
             shapeType: String,
@@ -46,28 +53,42 @@ public struct MacOSaiXProject: Codable, Sendable {
             tilesDown: Int,
             curviness: Float,
             strokeWidth: Double,
+            strokeColor: String = "black",
             maxReuse: Int,
             minDistance: Int,
             colorMetric: String,
             blendOpacity: Double,
             colorTransferStrength: Double = 0.0,
-            edgeWeight: Double = 0.0
+            edgeWeight: Double = 0.0,
+            quadtreeMaxDepth: Int = 3,
+            quadtreeThreshold: Double = 0.15,
+            quadtreeBalanced: Bool = true,
+            quadtreeDetailAlpha: Double = 0.5,
+            quadtreeAlgorithm: String = "juliaRange",
+            quadtreeMinTileDim: Double = 16.0
         ) {
             self.shapeType = shapeType
             self.tilesAcross = tilesAcross
             self.tilesDown = tilesDown
             self.curviness = curviness
             self.strokeWidth = strokeWidth
+            self.strokeColor = strokeColor
             self.maxReuse = maxReuse
             self.minDistance = minDistance
             self.colorMetric = colorMetric
             self.blendOpacity = blendOpacity
             self.colorTransferStrength = colorTransferStrength
             self.edgeWeight = edgeWeight
+            self.quadtreeMaxDepth = quadtreeMaxDepth
+            self.quadtreeThreshold = quadtreeThreshold
+            self.quadtreeBalanced = quadtreeBalanced
+            self.quadtreeDetailAlpha = quadtreeDetailAlpha
+            self.quadtreeAlgorithm = quadtreeAlgorithm
+            self.quadtreeMinTileDim = quadtreeMinTileDim
         }
         
         enum CodingKeys: String, CodingKey {
-            case shapeType, tilesAcross, tilesDown, curviness, strokeWidth, maxReuse, minDistance, colorMetric, blendOpacity, colorTransferStrength, edgeWeight
+            case shapeType, tilesAcross, tilesDown, curviness, strokeWidth, strokeColor, maxReuse, minDistance, colorMetric, blendOpacity, colorTransferStrength, edgeWeight, quadtreeMaxDepth, quadtreeThreshold, quadtreeBalanced, quadtreeDetailAlpha, quadtreeAlgorithm, quadtreeMinTileDim
         }
         
         public init(from decoder: Decoder) throws {
@@ -77,12 +98,19 @@ public struct MacOSaiXProject: Codable, Sendable {
             tilesDown = try container.decode(Int.self, forKey: .tilesDown)
             curviness = try container.decode(Float.self, forKey: .curviness)
             strokeWidth = try container.decode(Double.self, forKey: .strokeWidth)
+            strokeColor = try container.decodeIfPresent(String.self, forKey: .strokeColor) ?? "black"
             maxReuse = try container.decode(Int.self, forKey: .maxReuse)
             minDistance = try container.decode(Int.self, forKey: .minDistance)
             colorMetric = try container.decode(String.self, forKey: .colorMetric)
             blendOpacity = try container.decode(Double.self, forKey: .blendOpacity)
             colorTransferStrength = try container.decodeIfPresent(Double.self, forKey: .colorTransferStrength) ?? 0.0
             edgeWeight = try container.decodeIfPresent(Double.self, forKey: .edgeWeight) ?? 0.0
+            quadtreeMaxDepth = try container.decodeIfPresent(Int.self, forKey: .quadtreeMaxDepth) ?? 3
+            quadtreeThreshold = try container.decodeIfPresent(Double.self, forKey: .quadtreeThreshold) ?? 0.15
+            quadtreeBalanced = try container.decodeIfPresent(Bool.self, forKey: .quadtreeBalanced) ?? true
+            quadtreeDetailAlpha = try container.decodeIfPresent(Double.self, forKey: .quadtreeDetailAlpha) ?? 0.5
+            quadtreeAlgorithm = try container.decodeIfPresent(String.self, forKey: .quadtreeAlgorithm) ?? "juliaRange"
+            quadtreeMinTileDim = try container.decodeIfPresent(Double.self, forKey: .quadtreeMinTileDim) ?? 16.0
         }
     }
     

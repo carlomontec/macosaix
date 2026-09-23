@@ -12,7 +12,9 @@ public final class MosaicRenderer {
         mosaicSize: CGSize,
         outputWidth: Int,
         strokeWidth: Float = 0.0,
+        strokeColor: String = "black",
         colorTransferStrength: Float = 0.0,
+        isMonochrome: Bool = false,
         outputURL: URL
     ) throws {
         let scale = CGFloat(outputWidth) / mosaicSize.width
@@ -83,6 +85,10 @@ public final class MosaicRenderer {
                             )
                         }
                         
+                        if isMonochrome {
+                            cgImage = ColorTransfer.convertToMonochrome(cgImage)
+                        }
+                        
                         let imgW = CGFloat(cgImage.width)
                         let imgH = CGFloat(cgImage.height)
                         let fillScale = max(bounds.width / imgW, bounds.height / imgH)
@@ -109,7 +115,11 @@ public final class MosaicRenderer {
                 // Optional outline stroke around tile borders
                 if strokeWidth > 0.001 {
                     context.saveGState()
-                    context.setStrokeColor(CGColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.35))
+                    let isWhiteStroke = (strokeColor == "white")
+                    let strokeCol = isWhiteStroke ?
+                        CGColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.6) :
+                        CGColor(red: 0.0, green: 0.0, blue: 0.0, alpha: 0.35)
+                    context.setStrokeColor(strokeCol)
                     context.setLineWidth(CGFloat(strokeWidth) / scale)
                     context.addPath(tile.geometry.outline)
                     context.strokePath()

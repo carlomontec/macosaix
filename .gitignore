@@ -15,3 +15,5 @@ macosaix-modern/test/data/
 macosaix-modern/test/*.png
 macosaix-modern/test/*.jpg
 macosaix-modern/test/*.heic
+macosaix-modern/test_*.png
+*.png

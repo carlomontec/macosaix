@@ -19,6 +19,12 @@ public final class MosaicEngine: @unchecked Sendable {
     public var isCancelled: Bool = false
     public var isPaused: Bool = false
     public var edgeWeight: Float = 0.0
+    public var quadtreeMaxDepth: Int = 3
+    public var quadtreeThreshold: Float = 0.15
+    public var quadtreeBalanced: Bool = true
+    public var quadtreeDetailAlpha: Float = 0.5
+    public var quadtreeAlgorithm: MacOSaiXQuadtreeAlgorithm = .juliaRange
+    public var quadtreeMinTileDim: Float = 16.0
     
     /// Optional callback called on match updates (for live GUI rendering).
     public var onTileUpdated: ((_ tileIndex: Int) -> Void)?
@@ -31,7 +37,13 @@ public final class MosaicEngine: @unchecked Sendable {
         maxReuse: Int = 0,
         minDistance: Int = 0,
         metric: MacOSaiXColorMetric = .riemersma,
-        edgeWeight: Float = 0.0
+        edgeWeight: Float = 0.0,
+        quadtreeMaxDepth: Int = 3,
+        quadtreeThreshold: Float = 0.15,
+        quadtreeBalanced: Bool = true,
+        quadtreeDetailAlpha: Float = 0.5,
+        quadtreeAlgorithm: MacOSaiXQuadtreeAlgorithm = .juliaRange,
+        quadtreeMinTileDim: Float = 16.0
     ) {
         self.shapeType = shapeType
         self.tilesAcross = tilesAcross
@@ -41,6 +53,12 @@ public final class MosaicEngine: @unchecked Sendable {
         self.minDistance = minDistance
         self.metric = metric
         self.edgeWeight = edgeWeight
+        self.quadtreeMaxDepth = quadtreeMaxDepth
+        self.quadtreeThreshold = quadtreeThreshold
+        self.quadtreeBalanced = quadtreeBalanced
+        self.quadtreeDetailAlpha = quadtreeDetailAlpha
+        self.quadtreeAlgorithm = quadtreeAlgorithm
+        self.quadtreeMinTileDim = quadtreeMinTileDim
     }
     
     /// Loads the target image from a URL and prepares tile geometries, masks, and snippets.
@@ -100,11 +118,18 @@ public final class MosaicEngine: @unchecked Sendable {
         // Generate tile shapes using battle-tested geometry formulas
         let geometries = MacOSaiXShapes.generateShapes(
             for: shapeType,
+            targetImage: normalizedImage,
             mosaicSize: mosaicSize,
             across: tilesAcross,
             down: tilesDown,
             curviness: curviness,
-            tabRatio: 0.8
+            tabRatio: 0.8,
+            maxDepth: quadtreeMaxDepth,
+            detailThreshold: quadtreeThreshold,
+            balanced: quadtreeBalanced,
+            detailAlpha: quadtreeDetailAlpha,
+            algorithm: quadtreeAlgorithm,
+            minTileDim: quadtreeMinTileDim
         )
         
         // Build tile objects and extract thumbnails & masks

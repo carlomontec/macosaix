@@ -25,13 +25,14 @@ public struct SidebarView: View {
                             Text("Square").tag(MacOSaiXShapeType.rectangular)
                             Text("Hexagon").tag(MacOSaiXShapeType.hexagonal)
                             Text("Puzzle").tag(MacOSaiXShapeType.puzzle)
+                            Text("Adaptive").tag(MacOSaiXShapeType.quadtree)
                         }
                         .pickerStyle(.segmented)
                         .disabled(viewModel.isRunning)
                         
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text("Tiles Across:")
+                                Text(viewModel.shapeType == .quadtree ? "Base Grid Across:" : "Tiles Across:")
                                 Spacer()
                                 Text("\(viewModel.tilesAcross)")
                                     .foregroundColor(.secondary)
@@ -41,13 +42,13 @@ public struct SidebarView: View {
                             Slider(value: Binding(
                                 get: { Double(viewModel.tilesAcross) },
                                 set: { viewModel.tilesAcross = Int($0) }
-                            ), in: 10...80, step: 2)
+                            ), in: (viewModel.shapeType == .quadtree ? 4...30 : 10...80), step: 2)
                             .disabled(viewModel.isRunning)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
-                                Text("Tiles Down:")
+                                Text(viewModel.shapeType == .quadtree ? "Base Grid Down:" : "Tiles Down:")
                                 Spacer()
                                 Text("\(viewModel.tilesDown)")
                                     .foregroundColor(.secondary)
@@ -57,8 +58,135 @@ public struct SidebarView: View {
                             Slider(value: Binding(
                                 get: { Double(viewModel.tilesDown) },
                                 set: { viewModel.tilesDown = Int($0) }
-                            ), in: 10...60, step: 2)
+                            ), in: (viewModel.shapeType == .quadtree ? 4...24 : 10...60), step: 2)
                             .disabled(viewModel.isRunning)
+                        }
+                        
+                        if viewModel.shapeType == .quadtree {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Segmentation Algorithm:")
+                                    .font(.caption)
+                                Picker("", selection: $viewModel.quadtreeAlgorithm) {
+                                    Text("Julia Range (max - min)").tag("juliaRange")
+                                    Text("RGB Color Range").tag("colorRange")
+                                    Text("Variance / Hybrid (Legacy)").tag("variance")
+                                }
+                                .pickerStyle(.menu)
+                                .disabled(viewModel.isRunning)
+                                .help("Julia Range: strict (max - min) contrast, ideal for fine details like eyes and lips. RGB Color: includes chromatic edges. Variance: classic standard deviation.")
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Smallest Tile Limit:")
+                                    Spacer()
+                                    Text("\(Int(viewModel.quadtreeMinTileDim)) px")
+                                        .foregroundColor(.secondary)
+                                        .monospacedDigit()
+                                }
+                                .font(.caption)
+                                Picker("", selection: $viewModel.quadtreeMinTileDim) {
+                                    Text("8 px").tag(8.0)
+                                    Text("16 px").tag(16.0)
+                                    Text("24 px").tag(24.0)
+                                    Text("32 px").tag(32.0)
+                                    Text("48 px").tag(48.0)
+                                }
+                                .pickerStyle(.segmented)
+                                .disabled(viewModel.isRunning)
+                                .help("Guaranteed hard limit on the smallest tile dimension to control detail density.")
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Max Subdivision:")
+                                    Spacer()
+                                    let levelDesc = viewModel.quadtreeMaxDepth == 1 ? "Halves (2×)" :
+                                                   viewModel.quadtreeMaxDepth == 2 ? "Quarters (4×)" :
+                                                   viewModel.quadtreeMaxDepth == 3 ? "Eighths (8×)" :
+                                                   viewModel.quadtreeMaxDepth == 4 ? "Sixteenths (16×)" : "Thirty-seconds (32×)"
+                                    Text("Level \(viewModel.quadtreeMaxDepth) · \(levelDesc)")
+                                        .foregroundColor(.secondary)
+                                        .monospacedDigit()
+                                }
+                                .font(.caption)
+                                Slider(value: Binding(
+                                    get: { Double(viewModel.quadtreeMaxDepth) },
+                                    set: { viewModel.quadtreeMaxDepth = Int($0) }
+                                ), in: 1...5, step: 1)
+                                .disabled(viewModel.isRunning)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Detail Sensitivity:")
+                                    Button(action: {
+                                        viewModel.showingQuadtreeInfo.toggle()
+                                    }) {
+                                        Image(systemName: "info.circle")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("Learn about Adaptive Multi-Resolution Quadtree Tiling & Academic Citations")
+                                    .popover(isPresented: $viewModel.showingQuadtreeInfo, arrowEdge: .trailing) {
+                                        QuadtreeInfoView {
+                                            viewModel.showingQuadtreeInfo = false
+                                        }
+                                    }
+                                    
+                                    Spacer()
+                                    let sensPct = Int(round(max(0.05, min(0.95, (0.35 - viewModel.quadtreeThreshold) / 0.30)) * 100))
+                                    Text("\(sensPct)%")
+                                        .foregroundColor(.secondary)
+                                        .monospacedDigit()
+                                }
+                                .font(.caption)
+                                Slider(value: Binding(
+                                    get: {
+                                        let s = (0.35 - viewModel.quadtreeThreshold) / 0.30
+                                        return max(0.05, min(0.95, s))
+                                    },
+                                    set: { newSens in
+                                        let thresh = 0.35 - (newSens * 0.30)
+                                        viewModel.quadtreeThreshold = round(thresh * 1000.0) / 1000.0
+                                    }
+                                ), in: 0.05...0.95, step: 0.05)
+                                .disabled(viewModel.isRunning)
+                            }
+                            
+                            Toggle("2:1 Balanced Transitions", isOn: $viewModel.quadtreeBalanced)
+                                .font(.caption)
+                                .disabled(viewModel.isRunning)
+                                .help("Ensures adjacent tiles differ by at most one subdivision level for smooth, organic transitions (Klein et al. 2002)")
+                            
+                            if viewModel.quadtreeAlgorithm == "variance" {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Detail Mode:")
+                                        .font(.caption)
+                                    Picker("", selection: Binding(
+                                        get: {
+                                            if viewModel.quadtreeDetailAlpha <= 0.3 { return "edge" }
+                                            else if viewModel.quadtreeDetailAlpha >= 0.7 { return "texture" }
+                                            else { return "balanced" }
+                                        },
+                                        set: { mode in
+                                            switch mode {
+                                            case "edge": viewModel.quadtreeDetailAlpha = 0.2
+                                            case "texture": viewModel.quadtreeDetailAlpha = 0.8
+                                            default: viewModel.quadtreeDetailAlpha = 0.5
+                                            }
+                                        }
+                                    )) {
+                                        Text("Edge-Aware").tag("edge")
+                                        Text("Balanced").tag("balanced")
+                                        Text("Texture").tag("texture")
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .disabled(viewModel.isRunning)
+                                    .help("Edge-Aware: subdivides at structural boundaries. Balanced: blend of edges + texture. Texture: subdivides noisy/textured areas.")
+                                }
+                            }
                         }
                         
                         if viewModel.shapeType == .puzzle {
@@ -86,6 +214,21 @@ public struct SidebarView: View {
                             }
                             .font(.caption)
                             Slider(value: $viewModel.strokeWidth, in: 0.0...2.0, step: 0.25)
+                            
+                            if viewModel.strokeWidth > 0 {
+                                HStack {
+                                    Text("Cutline Color:")
+                                        .font(.caption)
+                                    Spacer()
+                                    Picker("", selection: $viewModel.strokeColor) {
+                                        Text("Dark").tag("black")
+                                        Text("White").tag("white")
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .frame(width: 120)
+                                }
+                                .padding(.top, 2)
+                            }
                         }
                         
                         HStack {
@@ -96,6 +239,13 @@ public struct SidebarView: View {
                             Text("\(viewModel.totalTilesCount)")
                                 .font(.caption2)
                                 .fontWeight(.semibold)
+                                .monospacedDigit()
+                        }
+                        
+                        if viewModel.shapeType == .quadtree && !viewModel.quadtreeSizeSummary.isEmpty {
+                            Text(viewModel.quadtreeSizeSummary)
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                                 .monospacedDigit()
                         }
                     }
@@ -226,6 +376,7 @@ public struct SidebarView: View {
                         Picker("Metric", selection: $viewModel.colorMetric) {
                             Text("Riemersma (Eye)").tag(MacOSaiXColorMetric.riemersma)
                             Text("RGB Distance").tag(MacOSaiXColorMetric.RGB)
+                            Text("Monochrome (B&W)").tag(MacOSaiXColorMetric.monochrome)
                         }
                         .pickerStyle(.menu)
                         .font(.caption)

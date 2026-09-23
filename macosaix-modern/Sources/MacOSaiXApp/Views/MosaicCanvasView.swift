@@ -23,6 +23,7 @@ public struct MosaicCanvasView: View {
                         targetImage: viewModel.targetCGImage,
                         blendOpacity: viewModel.blendOpacity,
                         strokeWidth: viewModel.strokeWidth,
+                        strokeColor: viewModel.strokeColor,
                         colorTransferStrength: viewModel.colorTransferStrength,
                         onTileTapped: { tile in
                             viewModel.selectedTile = tile
@@ -202,6 +203,7 @@ private struct MosaicRepresentable: NSViewRepresentable {
     let targetImage: CGImage?
     let blendOpacity: Double
     let strokeWidth: Double
+    let strokeColor: String
     let colorTransferStrength: Double
     let onTileTapped: (MacOSaiXTile) -> Void
     let onPan: (CGSize) -> Void
@@ -221,6 +223,7 @@ private struct MosaicRepresentable: NSViewRepresentable {
         nsView.targetImage = targetImage
         nsView.blendOpacity = blendOpacity
         nsView.strokeWidth = strokeWidth
+        nsView.strokeColor = strokeColor
         nsView.colorTransferStrength = colorTransferStrength
         nsView.onTileTapped = onTileTapped
         nsView.onPan = onPan
@@ -235,6 +238,7 @@ private final class NSMosaicView: NSView {
     var targetImage: CGImage?
     var blendOpacity: Double = 0.0
     var strokeWidth: Double = 0.5
+    var strokeColor: String = "black"
     var colorTransferStrength: Double = 0.0
     var onTileTapped: ((MacOSaiXTile) -> Void)?
     var onPan: ((CGSize) -> Void)?
@@ -245,6 +249,7 @@ private final class NSMosaicView: NSView {
     private var cachedCanvasVersion: Int = -1
     private var cachedQuantizedTransfer: Int = -1
     private var cachedStrokeWidth: Double = -1.0
+    private var cachedStrokeColor: String = ""
     private var cachedWidth: Int = -1
     private var cachedHeight: Int = -1
     private var cachedTilesCount: Int = -1
@@ -320,6 +325,7 @@ private final class NSMosaicView: NSView {
            cachedCanvasVersion == self.canvasVersion,
            cachedQuantizedTransfer == quantizedTransfer,
            abs(cachedStrokeWidth - self.strokeWidth) < 0.001,
+           cachedStrokeColor == self.strokeColor,
            cachedWidth == width,
            cachedHeight == height,
            cachedTilesCount == currentTilesCount {
@@ -350,18 +356,28 @@ private final class NSMosaicView: NSView {
         let transferStrength = Float(colorTransferStrength)
         let strokeW = CGFloat(strokeWidth)
         let strokeLineWidth = (displayScale > 0.0) ? strokeW / displayScale : strokeW
+        let isMono = (engine.metric == .monochrome)
+        let displayTarget = isMono ? ColorTransfer.convertToMonochrome(target) : target
+        
+        let hasUnmatchedTiles = engine.tiles.contains { $0.bestImageURL == nil }
+        if hasUnmatchedTiles {
+            drawUprightImage(displayTarget, in: CGRect(origin: .zero, size: mSize), in: ctx)
+            ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.35))
+            ctx.fill(CGRect(origin: .zero, size: mSize))
+        }
         
         for tile in engine.tiles {
-            ctx.saveGState()
-            ctx.addPath(tile.geometry.outline)
-            ctx.clip()
-            
             if let imageURL = tile.bestImageURL {
+                ctx.saveGState()
+                ctx.addPath(tile.geometry.outline)
+                ctx.clip()
+                
                 let targetStats = (transferStrength > 0.001) ? tile.targetColorStatistics : nil
                 if let cgImg = MosaicThumbnailCache.shared.thumbnail(
                     for: imageURL,
                     targetStats: targetStats,
-                    colorTransferStrength: transferStrength
+                    colorTransferStrength: transferStrength,
+                    isMonochrome: isMono
                 ) {
                     let b = tile.geometry.bounds
                     let imgW = CGFloat(cgImg.width)
@@ -374,16 +390,15 @@ private final class NSMosaicView: NSView {
                     
                     drawUprightImage(cgImg, in: CGRect(x: drawX, y: drawY, width: drawW, height: drawH), in: ctx)
                 }
-            } else {
-                drawUprightImage(target, in: CGRect(origin: .zero, size: mSize), in: ctx)
-                ctx.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.35))
-                ctx.fill(tile.geometry.bounds)
+                ctx.restoreGState()
             }
-            ctx.restoreGState()
             
             if strokeW > 0.01 {
                 ctx.saveGState()
-                ctx.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.3))
+                let strokeCol = (self.strokeColor == "white") ?
+                    CGColor(red: 1, green: 1, blue: 1, alpha: 0.6) :
+                    CGColor(red: 0, green: 0, blue: 0, alpha: 0.35)
+                ctx.setStrokeColor(strokeCol)
                 ctx.setLineWidth(strokeLineWidth)
                 ctx.addPath(tile.geometry.outline)
                 ctx.strokePath()
@@ -396,6 +411,7 @@ private final class NSMosaicView: NSView {
         self.cachedCanvasVersion = self.canvasVersion
         self.cachedQuantizedTransfer = quantizedTransfer
         self.cachedStrokeWidth = self.strokeWidth
+        self.cachedStrokeColor = self.strokeColor
         self.cachedWidth = width
         self.cachedHeight = height
         self.cachedTilesCount = currentTilesCount
@@ -431,7 +447,9 @@ private final class NSMosaicView: NSView {
         if blendOpacity > 0.01 {
             context.saveGState()
             context.setAlpha(CGFloat(blendOpacity))
-            drawUprightImage(target, in: CGRect(origin: .zero, size: mSize), in: context)
+            let isMono = (engine.metric == .monochrome)
+            let blendTarget = isMono ? ColorTransfer.convertToMonochrome(target) : target
+            drawUprightImage(blendTarget, in: CGRect(origin: .zero, size: mSize), in: context)
             context.restoreGState()
         }
         

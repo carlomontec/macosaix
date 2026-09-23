@@ -50,19 +50,32 @@ public final class MosaicThumbnailCache: @unchecked Sendable {
         for url: URL,
         targetStats: ColorStatistics?,
         colorTransferStrength: Float,
+        isMonochrome: Bool = false,
         maxPixelSize: Int = 64
     ) -> CGImage? {
         guard let base = thumbnail(for: url, maxPixelSize: maxPixelSize) else {
             return nil
         }
         
+        if isMonochrome && (targetStats == nil || colorTransferStrength <= 0.001) {
+            let key = "\(url.path)#mono" as NSString
+            if let cached = transferredCache.object(forKey: key) {
+                return cached
+            }
+            let mono = ColorTransfer.convertToMonochrome(base)
+            let cost = mono.bytesPerRow * mono.height
+            transferredCache.setObject(mono, forKey: key, cost: cost)
+            return mono
+        }
+        
         guard let stats = targetStats, colorTransferStrength > 0.001 else {
-            return base
+            return isMonochrome ? ColorTransfer.convertToMonochrome(base) : base
         }
         
         // Quantize strength to 5% intervals to maximize cache hits while dragging the slider
         let quantizedPct = Int(round(colorTransferStrength * 20.0)) * 5
-        let key = "\(url.path)#\(Int(stats.meanL * 1000))_\(Int(stats.meanA * 1000))_\(Int(stats.meanB * 1000))#\(quantizedPct)" as NSString
+        let monoSuffix = isMonochrome ? "#mono" : ""
+        let key = "\(url.path)#\(Int(stats.meanL * 1000))_\(Int(stats.meanA * 1000))_\(Int(stats.meanB * 1000))#\(quantizedPct)\(monoSuffix)" as NSString
         if let cached = transferredCache.object(forKey: key) {
             return cached
         }
@@ -77,12 +90,20 @@ public final class MosaicThumbnailCache: @unchecked Sendable {
             sourceStatsCache.setObject(ColorStatisticsBox(srcStats), forKey: urlKey)
         }
         
-        let transferred = ColorTransfer.applyColorTransfer(
+        var effectiveStats = stats
+        if isMonochrome {
+            effectiveStats = ColorStatistics(meanL: stats.meanL, meanA: 0.0, meanB: 0.0, stdL: stats.stdL, stdA: 0.001, stdB: 0.001)
+        }
+        
+        var transferred = ColorTransfer.applyColorTransfer(
             to: base,
             sourceStats: srcStats,
-            targetStats: stats,
+            targetStats: effectiveStats,
             strength: Float(quantizedPct) / 100.0
         )
+        if isMonochrome {
+            transferred = ColorTransfer.convertToMonochrome(transferred)
+        }
         let cost = transferred.bytesPerRow * transferred.height
         transferredCache.setObject(transferred, forKey: key, cost: cost)
         return transferred

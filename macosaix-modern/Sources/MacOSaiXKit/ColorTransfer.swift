@@ -264,6 +264,30 @@ public enum ColorTransfer {
         
         return ctx.makeImage() ?? candidate
     }
+    
+    /// Converts a CGImage to pristine Rec. 709 grayscale / monochrome.
+    public static func convertToMonochrome(_ image: CGImage) -> CGImage {
+        let width = image.width
+        let height = image.height
+        guard width > 0, height > 0 else { return image }
+        
+        let grayColorSpace = CGColorSpaceCreateDeviceGray()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: grayColorSpace,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else {
+            return image
+        }
+        
+        context.interpolationQuality = CGInterpolationQuality.high
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return context.makeImage() ?? image
+    }
 }
 
 // MARK: - MacOSaiXTile Integration

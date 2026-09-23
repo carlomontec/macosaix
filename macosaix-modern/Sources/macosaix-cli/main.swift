@@ -16,17 +16,24 @@ func printUsage() {
       --target <path>        Target image to turn into a mosaic (HEIC, JPEG, PNG, etc.)
       --sources <folder>     Folder of source photos (HEIC, JPEG, PNG, etc.)
       --output <path>        Output image path (default: mosaic.png)
-      --shape <type>         Tile shape: rect | hex | puzzle (default: rect)
-      --across <N>           Tiles horizontally (default: 30)
-      --down <N>             Tiles vertically (default: 20)
+      --shape <type>         Tile shape: rect | hex | puzzle | quadtree (default: rect)
+      --across <N>           Tiles horizontally (default: 30, or base across for quadtree)
+      --down <N>             Tiles vertically (default: 20, or base down for quadtree)
+      --quadtree-depth <N>   Max quadtree subdivision depth 1 - 5 (default: 3)
+      --quadtree-thresh <f>  Quadtree detail sensitivity threshold 0.02 - 0.50 (default: 0.15)
+      --quadtree-balance <b> Enforce 2:1 balanced transitions true|false (default: true)
+      --quadtree-algo <a>    Segmentation algorithm: julia | color | variance (default: julia)
+      --quadtree-min-tile <N> Smallest tile dimension in pixels (default: 16)
+      --quadtree-mode <m>    Detail mode for variance: edge | balanced | texture (default: balanced)
       --curviness <float>    Puzzle edge curviness 0.0 - 1.0 (default: 0.5)
       --max-reuse <N>        Maximum times any photo can be reused (default: 0 = unlimited)
       --min-distance <N>     Minimum tile distance between identical photos (default: 2)
       --width <pixels>       Output mosaic pixel width (default: 2400)
       --stroke <pixels>      Tile border stroke width (default: 0.0)
+      --stroke-color <c>     Cutline border stroke color: black | white (default: black)
       --color-transfer <f>   Reinhard perceptual color transfer 0.0 - 1.0 (default: 0.0)
       --edge-weight <f>      Edge-aware directional matching 0.0 - 1.0 (default: 0.0)
-      --metric <type>        Color metric: riemersma | rgb (default: riemersma)
+      --metric <type>        Color metric: riemersma | rgb | monochrome (default: riemersma)
       --force                Bypass memory safety check if estimated RAM is very high
       --help                 Show this help message
     """)
@@ -77,8 +84,29 @@ func main() async {
     let minDistance = Int(args["min-distance"] ?? "2") ?? 2
     let outputWidth = Int(args["width"] ?? "2400") ?? 2400
     let strokeWidth = Float(args["stroke"] ?? "0.0") ?? 0.0
+    let strokeColor = args["stroke-color"]?.lowercased() == "white" ? "white" : "black"
     let colorTransfer = max(0.0, min(1.0, Float(args["color-transfer"] ?? "0.0") ?? 0.0))
     let edgeWeight = max(0.0, min(1.0, Float(args["edge-weight"] ?? "0.0") ?? 0.0))
+    let quadtreeDepth = max(1, min(5, Int(args["quadtree-depth"] ?? "3") ?? 3))
+    let quadtreeThreshold = max(0.01, min(1.0, Float(args["quadtree-thresh"] ?? (args["quadtree-threshold"] ?? "0.15")) ?? 0.15))
+    let quadtreeBalanced = (args["quadtree-balance"]?.lowercased() != "false" && args["quadtree-balance"] != "0")
+    let quadtreeAlgoStr = args["quadtree-algo"]?.lowercased() ?? "julia"
+    let quadtreeAlgo: MacOSaiXQuadtreeAlgorithm = {
+        switch quadtreeAlgoStr {
+        case "color", "colorrange", "rgb": return .colorRange
+        case "variance", "hybrid": return .variance
+        default: return .juliaRange
+        }
+    }()
+    let quadtreeMinTileDim = max(4.0, min(128.0, Float(args["quadtree-min-tile"] ?? "16") ?? 16.0))
+    let quadtreeModeStr = args["quadtree-mode"]?.lowercased() ?? "balanced"
+    let quadtreeDetailAlpha: Float = {
+        switch quadtreeModeStr {
+        case "edge", "edge-aware": return 0.2
+        case "texture", "texture-sensitive": return 0.8
+        default: return 0.5
+        }
+    }()
     let metricStr = args["metric"]?.lowercased() ?? "riemersma"
     
     let shapeType: MacOSaiXShapeType
@@ -87,11 +115,21 @@ func main() async {
         shapeType = .hexagonal
     case "puzzle":
         shapeType = .puzzle
+    case "quadtree", "adaptive":
+        shapeType = .quadtree
     default:
         shapeType = .rectangular
     }
     
-    let colorMetric: MacOSaiXColorMetric = (metricStr == "rgb") ? .RGB : .riemersma
+    let colorMetric: MacOSaiXColorMetric
+    switch metricStr {
+    case "rgb":
+        colorMetric = .RGB
+    case "monochrome", "mono", "bw":
+        colorMetric = .monochrome
+    default:
+        colorMetric = .riemersma
+    }
     
     let targetURL = URL(fileURLWithPath: targetPath)
     let sourcesURL = URL(fileURLWithPath: sourcesPath)
@@ -103,10 +141,23 @@ func main() async {
     print("Target:        \(targetURL.lastPathComponent)")
     print("Sources dir:   \(sourcesURL.path)")
     print("Shape:         \(shapeStr.uppercased())")
-    print("Grid:          \(across) x \(down) tiles")
+    if shapeType == .quadtree {
+        print("Base grid:     \(across) x \(down)")
+        print("Algorithm:     \(quadtreeAlgoStr == "color" ? "RGB Color Range" : (quadtreeAlgoStr == "variance" ? "Variance / Hybrid" : "Julia Range (max - min)"))")
+        print("Min tile size: \(Int(quadtreeMinTileDim)) px")
+        print("Subdivision:   Max Depth \(quadtreeDepth), Sensitivity \(Int(quadtreeThreshold * 100))%, 2:1 Balanced: \(quadtreeBalanced ? "Yes" : "No")")
+        if quadtreeAlgo == .variance {
+            print("Detail mode:   \(quadtreeModeStr) (α=\(String(format: "%.1f", quadtreeDetailAlpha)))")
+        }
+    } else {
+        print("Grid:          \(across) x \(down) tiles")
+    }
     print("Max reuse:     \(maxReuse == 0 ? "Unlimited" : "\(maxReuse)")")
     print("Min distance:  \(minDistance) tiles")
     print("Color metric:  \(metricStr)")
+    if strokeWidth > 0.001 {
+        print("Cutlines:      \(strokeWidth) px (\(strokeColor))")
+    }
     if colorTransfer > 0.001 {
         print("Color transfer: \(Int(colorTransfer * 100))%")
     }
@@ -125,7 +176,13 @@ func main() async {
         maxReuse: maxReuse,
         minDistance: minDistance,
         metric: colorMetric,
-        edgeWeight: edgeWeight
+        edgeWeight: edgeWeight,
+        quadtreeMaxDepth: quadtreeDepth,
+        quadtreeThreshold: quadtreeThreshold,
+        quadtreeBalanced: quadtreeBalanced,
+        quadtreeDetailAlpha: quadtreeDetailAlpha,
+        quadtreeAlgorithm: quadtreeAlgo,
+        quadtreeMinTileDim: quadtreeMinTileDim
     )
     
     do {
@@ -221,7 +278,9 @@ func main() async {
             mosaicSize: engine.mosaicSize,
             outputWidth: outputWidth,
             strokeWidth: strokeWidth,
+            strokeColor: strokeColor,
             colorTransferStrength: colorTransfer,
+            isMonochrome: (colorMetric == .monochrome),
             outputURL: outputURL
         )
         print(String(format: "Rendered and saved to \(outputURL.path) in %.2f seconds.",

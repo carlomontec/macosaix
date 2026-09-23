@@ -6,7 +6,8 @@
 
 typedef NS_ENUM(NSInteger, MacOSaiXColorMetric) {
     MacOSaiXColorMetricRiemersma = 0,
-    MacOSaiXColorMetricRGB = 1
+    MacOSaiXColorMetricRGB = 1,
+    MacOSaiXColorMetricMonochrome = 2
 };
 
 typedef struct {

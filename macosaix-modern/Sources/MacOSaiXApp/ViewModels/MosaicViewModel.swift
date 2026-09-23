@@ -16,7 +16,19 @@ public final class MosaicViewModel: ObservableObject {
     
     // MARK: - Settings State
     @Published public var shapeType: MacOSaiXShapeType = .rectangular {
-        didSet { if shapeType != oldValue { prepareTiles() } }
+        didSet {
+            if shapeType != oldValue {
+                if shapeType == .quadtree && tilesAcross > 20 {
+                    tilesAcross = 12
+                    if let img = targetCGImage {
+                        tilesDown = max(2, Int(round(Double(tilesAcross) * Double(img.height) / Double(img.width))))
+                    } else {
+                        tilesDown = 8
+                    }
+                }
+                prepareTiles()
+            }
+        }
     }
     @Published public var tilesAcross: Int = 30 {
         didSet { if tilesAcross != oldValue { prepareTiles() } }
@@ -27,10 +39,17 @@ public final class MosaicViewModel: ObservableObject {
     @Published public var curviness: Double = 0.5 {
         didSet { if curviness != oldValue { prepareTiles() } }
     }
-    @Published public var strokeWidth: Double = 0.5
+    @Published public var strokeWidth: Double = 0.5 {
+        didSet { canvasVersion += 1 }
+    }
+    @Published public var strokeColor: String = "black" {
+        didSet { canvasVersion += 1 }
+    }
     @Published public var maxReuse: Int = 0
     @Published public var minDistance: Int = 2
-    @Published public var colorMetric: MacOSaiXColorMetric = .riemersma
+    @Published public var colorMetric: MacOSaiXColorMetric = .riemersma {
+        didSet { canvasVersion += 1 }
+    }
     
     // Blend with Original (0.0 = 100% Mosaic, 1.0 = 100% Original Photo)
     @Published public var blendOpacity: Double = 0.0
@@ -46,6 +65,28 @@ public final class MosaicViewModel: ObservableObject {
         }
     }
     @Published public var showingEdgeMatchingInfo: Bool = false
+    
+    // Adaptive Multi-Resolution Quadtree Tiling
+    @Published public var quadtreeMaxDepth: Int = 3 {
+        didSet { if quadtreeMaxDepth != oldValue && shapeType == .quadtree { prepareTiles() } }
+    }
+    @Published public var quadtreeThreshold: Double = 0.08 {
+        didSet { if quadtreeThreshold != oldValue && shapeType == .quadtree { prepareTiles() } }
+    }
+    @Published public var quadtreeBalanced: Bool = true {
+        didSet { if quadtreeBalanced != oldValue && shapeType == .quadtree { prepareTiles() } }
+    }
+    @Published public var quadtreeDetailAlpha: Double = 0.5 {
+        didSet { if quadtreeDetailAlpha != oldValue && shapeType == .quadtree { prepareTiles() } }
+    }
+    @Published public var quadtreeAlgorithm: String = "juliaRange" {
+        didSet { if quadtreeAlgorithm != oldValue && shapeType == .quadtree { prepareTiles() } }
+    }
+    @Published public var quadtreeMinTileDim: Double = 16.0 {
+        didSet { if quadtreeMinTileDim != oldValue && shapeType == .quadtree { prepareTiles() } }
+    }
+    @Published public var showingQuadtreeInfo: Bool = false
+    @Published public var quadtreeSizeSummary: String = ""
     
     // MARK: - Image Sources State
     @Published public var sourceFolders: [URL] = []
@@ -184,6 +225,18 @@ public final class MosaicViewModel: ObservableObject {
         let minDist = self.minDistance
         let metric = self.colorMetric
         let edgeW = Float(self.edgeWeight)
+        let qDepth = self.quadtreeMaxDepth
+        let qThresh = Float(self.quadtreeThreshold)
+        let qBalanced = self.quadtreeBalanced
+        let qDetailAlpha = Float(self.quadtreeDetailAlpha)
+        let qAlgo: MacOSaiXQuadtreeAlgorithm = {
+            switch self.quadtreeAlgorithm {
+            case "colorRange": return .colorRange
+            case "variance": return .variance
+            default: return .juliaRange
+            }
+        }()
+        let qMinTileDim = Float(self.quadtreeMinTileDim)
         
         tilePrepTask = Task.detached(priority: .userInitiated) { [weak self, cgImg] in
             let newEngine = MosaicEngine(
@@ -194,7 +247,13 @@ public final class MosaicViewModel: ObservableObject {
                 maxReuse: reuse,
                 minDistance: minDist,
                 metric: metric,
-                edgeWeight: edgeW
+                edgeWeight: edgeW,
+                quadtreeMaxDepth: qDepth,
+                quadtreeThreshold: qThresh,
+                quadtreeBalanced: qBalanced,
+                quadtreeDetailAlpha: qDetailAlpha,
+                quadtreeAlgorithm: qAlgo,
+                quadtreeMinTileDim: qMinTileDim
             )
             
             do {
@@ -209,6 +268,17 @@ public final class MosaicViewModel: ObservableObject {
                     self.processedImagesCount = 0
                     self.averageScore = 1.0
                     self.canvasVersion += 1
+                    
+                    if shape == .quadtree && !newEngine.tiles.isEmpty {
+                        let minW = newEngine.tiles.map { $0.geometry.bounds.width }.min() ?? 0
+                        let minH = newEngine.tiles.map { $0.geometry.bounds.height }.min() ?? 0
+                        let maxW = newEngine.tiles.map { $0.geometry.bounds.width }.max() ?? 0
+                        let maxH = newEngine.tiles.map { $0.geometry.bounds.height }.max() ?? 0
+                        self.quadtreeSizeSummary = "Tile sizes: \(Int(round(maxW)))×\(Int(round(maxH))) px down to \(Int(round(minW)))×\(Int(round(minH))) px"
+                    } else {
+                        self.quadtreeSizeSummary = ""
+                    }
+                    
                     self.statusMessage = "Ready: \(newEngine.tiles.count) tile shapes generated."
                     self.updateMemoryEstimate()
                 }
@@ -469,6 +539,8 @@ public final class MosaicViewModel: ObservableObject {
             let tilesCopy = engine.tiles
             let mosaicSizeCopy = engine.mosaicSize
             let stroke = Float(self.strokeWidth)
+            let strokeCol = self.strokeColor
+            let isMono = (self.colorMetric == .monochrome)
             let transfer = Float(self.colorTransferStrength)
             
             Task.detached(priority: .userInitiated) {
@@ -479,7 +551,9 @@ public final class MosaicViewModel: ObservableObject {
                         mosaicSize: mosaicSizeCopy,
                         outputWidth: outputWidth,
                         strokeWidth: stroke,
+                        strokeColor: strokeCol,
                         colorTransferStrength: transfer,
+                        isMonochrome: isMono,
                         outputURL: finalURL
                     )
                     await MainActor.run {
@@ -574,10 +648,16 @@ public final class MosaicViewModel: ObservableObject {
         switch shapeType {
         case .hexagonal: shapeStr = "hexagonal"
         case .puzzle: shapeStr = "puzzle"
+        case .quadtree: shapeStr = "quadtree"
         default: shapeStr = "rectangular"
         }
         
-        let metricStr = (colorMetric == .RGB) ? "rgb" : "riemersma"
+        let metricStr: String
+        switch colorMetric {
+        case .RGB: metricStr = "rgb"
+        case .monochrome: metricStr = "monochrome"
+        default: metricStr = "riemersma"
+        }
         
         let settings = MacOSaiXProject.ProjectSettings(
             shapeType: shapeStr,
@@ -585,12 +665,19 @@ public final class MosaicViewModel: ObservableObject {
             tilesDown: tilesDown,
             curviness: Float(curviness),
             strokeWidth: strokeWidth,
+            strokeColor: strokeColor,
             maxReuse: maxReuse,
             minDistance: minDistance,
             colorMetric: metricStr,
             blendOpacity: blendOpacity,
             colorTransferStrength: colorTransferStrength,
-            edgeWeight: edgeWeight
+            edgeWeight: edgeWeight,
+            quadtreeMaxDepth: quadtreeMaxDepth,
+            quadtreeThreshold: quadtreeThreshold,
+            quadtreeBalanced: quadtreeBalanced,
+            quadtreeDetailAlpha: quadtreeDetailAlpha,
+            quadtreeAlgorithm: quadtreeAlgorithm,
+            quadtreeMinTileDim: quadtreeMinTileDim
         )
         
         var tileRecords: [MacOSaiXProject.TileMatchRecord] = []
@@ -664,6 +751,8 @@ public final class MosaicViewModel: ObservableObject {
                         self.shapeType = .hexagonal
                     case "puzzle":
                         self.shapeType = .puzzle
+                    case "quadtree", "adaptive":
+                        self.shapeType = .quadtree
                     default:
                         self.shapeType = .rectangular
                     }
@@ -672,12 +761,26 @@ public final class MosaicViewModel: ObservableObject {
                     self.tilesDown = project.settings.tilesDown
                     self.curviness = Double(project.settings.curviness)
                     self.strokeWidth = project.settings.strokeWidth
+                    self.strokeColor = project.settings.strokeColor
                     self.maxReuse = project.settings.maxReuse
                     self.minDistance = project.settings.minDistance
-                    self.colorMetric = (project.settings.colorMetric == "rgb") ? .RGB : .riemersma
+                    switch project.settings.colorMetric.lowercased() {
+                    case "rgb":
+                        self.colorMetric = .RGB
+                    case "monochrome", "mono", "bw":
+                        self.colorMetric = .monochrome
+                    default:
+                        self.colorMetric = .riemersma
+                    }
                     self.blendOpacity = project.settings.blendOpacity
                     self.colorTransferStrength = project.settings.colorTransferStrength
                     self.edgeWeight = project.settings.edgeWeight
+                    self.quadtreeMaxDepth = project.settings.quadtreeMaxDepth
+                    self.quadtreeThreshold = project.settings.quadtreeThreshold
+                    self.quadtreeBalanced = project.settings.quadtreeBalanced
+                    self.quadtreeDetailAlpha = project.settings.quadtreeDetailAlpha
+                    self.quadtreeAlgorithm = project.settings.quadtreeAlgorithm
+                    self.quadtreeMinTileDim = project.settings.quadtreeMinTileDim
                     
                     self.sourceFolders = project.sourceFolders.compactMap { path in
                         let url = URL(fileURLWithPath: path)
@@ -752,7 +855,13 @@ public final class MosaicViewModel: ObservableObject {
                     maxReuse: self.maxReuse,
                     minDistance: self.minDistance,
                     metric: self.colorMetric,
-                    edgeWeight: Float(self.edgeWeight)
+                    edgeWeight: Float(self.edgeWeight),
+                    quadtreeMaxDepth: self.quadtreeMaxDepth,
+                    quadtreeThreshold: Float(self.quadtreeThreshold),
+                    quadtreeBalanced: self.quadtreeBalanced,
+                    quadtreeDetailAlpha: Float(self.quadtreeDetailAlpha),
+                    quadtreeAlgorithm: self.quadtreeAlgorithm == "colorRange" ? .colorRange : (self.quadtreeAlgorithm == "variance" ? .variance : .juliaRange),
+                    quadtreeMinTileDim: Float(self.quadtreeMinTileDim)
                 )
                 
                 do {
