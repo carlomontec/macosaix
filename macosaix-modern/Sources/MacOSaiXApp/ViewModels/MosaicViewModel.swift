@@ -320,7 +320,7 @@ public final class MosaicViewModel: ObservableObject {
         self.totalImagesCount = allURLs.count
         self.heicCount = allURLs.filter { 
             let ext = $0.pathExtension.lowercased()
-            return ext == "heic" || ext == "heif"
+            return ext == "heic" || ext == "heif" || ext == "hif"
         }.count
         
         // Multi-format breakdown
@@ -328,8 +328,8 @@ public final class MosaicViewModel: ObservableObject {
         for url in allURLs {
             let ext = url.pathExtension.lowercased()
             switch ext {
-            case "heic", "heif":
-                counts["HEIC", default: 0] += 1
+            case "heic", "heif", "hif":
+                counts["HEIC/HIF", default: 0] += 1
             case "avif":
                 counts["AVIF", default: 0] += 1
             case "jpg", "jpeg":

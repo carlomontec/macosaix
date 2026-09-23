@@ -112,6 +112,7 @@ public struct TileDetailPopover: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         var types: [UTType] = [.image, .heic, .jpeg, .png, .tiff]
+        if let hif = UTType(filenameExtension: "hif") { types.append(hif) }
         if let avif = UTType(filenameExtension: "avif") { types.append(avif) }
         if let webp = UTType(filenameExtension: "webp") { types.append(webp) }
         panel.allowedContentTypes = types

@@ -94,6 +94,9 @@ public struct TargetImageWell: View {
         panel.allowsMultipleSelection = false
         
         var types: [UTType] = [.image, .heic, .jpeg, .png, .tiff]
+        if let hifType = UTType(filenameExtension: "hif") {
+            types.append(hifType)
+        }
         if let avifType = UTType(filenameExtension: "avif") {
             types.append(avifType)
         }

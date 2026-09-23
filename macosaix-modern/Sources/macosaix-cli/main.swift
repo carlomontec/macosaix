@@ -216,8 +216,11 @@ func main() async {
         exit(1)
     }
     
-    let heicCount = imageURLs.filter { $0.pathExtension.lowercased() == "heic" }.count
-    print("Found \(imageURLs.count) photos (\(heicCount) HEIC).")
+    let heicCount = imageURLs.filter {
+        let ext = $0.pathExtension.lowercased()
+        return ext == "heic" || ext == "heif" || ext == "hif"
+    }.count
+    print("Found \(imageURLs.count) photos (\(heicCount) HEIC/HIF).")
     
     // RAM & Memory Pre-Flight Check
     let scale = CGFloat(outputWidth) / engine.mosaicSize.width
