@@ -68,17 +68,18 @@ public struct SidebarView: View {
                                     .font(.caption)
                                 Picker("", selection: $viewModel.quadtreeAlgorithm) {
                                     Text("Julia Range (max - min)").tag("juliaRange")
+                                    Text("Whole Canvas Quadtree").tag("wholeCanvas")
                                     Text("RGB Color Range").tag("colorRange")
                                     Text("Variance / Hybrid (Legacy)").tag("variance")
                                 }
                                 .pickerStyle(.menu)
                                 .disabled(viewModel.isRunning)
-                                .help("Julia Range: strict (max - min) contrast, ideal for fine details like eyes and lips. RGB Color: includes chromatic edges. Variance: classic standard deviation.")
+                                .help("Julia Range: strict (max - min) contrast, ideal for fine details like eyes and lips. Whole Canvas: starts with 1 root tile covering the full image. RGB Color: includes chromatic edges. Variance: classic standard deviation.")
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("Smallest Tile Limit:")
+                                    Text("Min Tile Size Floor:")
                                     Spacer()
                                     Text("\(Int(viewModel.quadtreeMinTileDim)) px")
                                         .foregroundColor(.secondary)
@@ -86,6 +87,7 @@ public struct SidebarView: View {
                                 }
                                 .font(.caption)
                                 Picker("", selection: $viewModel.quadtreeMinTileDim) {
+                                    Text("4 px").tag(4.0)
                                     Text("8 px").tag(8.0)
                                     Text("16 px").tag(16.0)
                                     Text("24 px").tag(24.0)
@@ -94,7 +96,7 @@ public struct SidebarView: View {
                                 }
                                 .pickerStyle(.segmented)
                                 .disabled(viewModel.isRunning)
-                                .help("Guaranteed hard limit on the smallest tile dimension to control detail density.")
+                                .help("Hardware safety floor in screen pixels. Quadtree subdivision stops if a tile would become smaller than this floor.")
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
@@ -136,7 +138,7 @@ public struct SidebarView: View {
                                     }
                                     
                                     Spacer()
-                                    let sensPct = Int(round(max(0.05, min(0.95, (0.35 - viewModel.quadtreeThreshold) / 0.30)) * 100))
+                                    let sensPct = Int(round(max(0.0, min(1.0, (0.85 - viewModel.quadtreeThreshold) / 0.80)) * 100))
                                     Text("\(sensPct)%")
                                         .foregroundColor(.secondary)
                                         .monospacedDigit()
@@ -144,14 +146,14 @@ public struct SidebarView: View {
                                 .font(.caption)
                                 Slider(value: Binding(
                                     get: {
-                                        let s = (0.35 - viewModel.quadtreeThreshold) / 0.30
-                                        return max(0.05, min(0.95, s))
+                                        let s = (0.85 - viewModel.quadtreeThreshold) / 0.80
+                                        return max(0.0, min(1.0, s))
                                     },
                                     set: { newSens in
-                                        let thresh = 0.35 - (newSens * 0.30)
+                                        let thresh = 0.85 - (newSens * 0.80)
                                         viewModel.quadtreeThreshold = round(thresh * 1000.0) / 1000.0
                                     }
-                                ), in: 0.05...0.95, step: 0.05)
+                                ), in: 0.0...1.0, step: 0.01)
                                 .disabled(viewModel.isRunning)
                             }
                             

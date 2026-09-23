@@ -14,7 +14,8 @@ typedef NS_ENUM(NSInteger, MacOSaiXShapeType) {
 typedef NS_ENUM(NSInteger, MacOSaiXQuadtreeAlgorithm) {
     MacOSaiXQuadtreeAlgorithmJuliaRange = 0,
     MacOSaiXQuadtreeAlgorithmColorRange = 1,
-    MacOSaiXQuadtreeAlgorithmVariance = 2
+    MacOSaiXQuadtreeAlgorithmVariance = 2,
+    MacOSaiXQuadtreeAlgorithmWholeCanvas = 3
 };
 
 @interface MacOSaiXTileGeometry : NSObject

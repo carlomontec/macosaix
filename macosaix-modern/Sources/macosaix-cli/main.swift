@@ -22,7 +22,7 @@ func printUsage() {
       --quadtree-depth <N>   Max quadtree subdivision depth 1 - 5 (default: 3)
       --quadtree-thresh <f>  Quadtree detail sensitivity threshold 0.02 - 0.50 (default: 0.15)
       --quadtree-balance <b> Enforce 2:1 balanced transitions true|false (default: true)
-      --quadtree-algo <a>    Segmentation algorithm: julia | color | variance (default: julia)
+      --quadtree-algo <a>    Segmentation algorithm: julia | color | variance | whole (default: julia)
       --quadtree-min-tile <N> Smallest tile dimension in pixels (default: 16)
       --quadtree-mode <m>    Detail mode for variance: edge | balanced | texture (default: balanced)
       --curviness <float>    Puzzle edge curviness 0.0 - 1.0 (default: 0.5)
@@ -95,6 +95,7 @@ func main() async {
         switch quadtreeAlgoStr {
         case "color", "colorrange", "rgb": return .colorRange
         case "variance", "hybrid": return .variance
+        case "whole", "wholecanvas", "canvas": return .wholeCanvas
         default: return .juliaRange
         }
     }()
@@ -142,8 +143,20 @@ func main() async {
     print("Sources dir:   \(sourcesURL.path)")
     print("Shape:         \(shapeStr.uppercased())")
     if shapeType == .quadtree {
-        print("Base grid:     \(across) x \(down)")
-        print("Algorithm:     \(quadtreeAlgoStr == "color" ? "RGB Color Range" : (quadtreeAlgoStr == "variance" ? "Variance / Hybrid" : "Julia Range (max - min)"))")
+        if quadtreeAlgo == .wholeCanvas {
+            print("Canvas root:   Single top-down decomposition")
+        } else {
+            print("Base grid:     \(across) x \(down)")
+        }
+        let algoName: String = {
+            switch quadtreeAlgo {
+            case .colorRange: return "RGB Color Range"
+            case .variance: return "Variance / Hybrid"
+            case .wholeCanvas: return "Whole Canvas Quadtree"
+            default: return "Julia Range (max - min)"
+            }
+        }()
+        print("Algorithm:     \(algoName)")
         print("Min tile size: \(Int(quadtreeMinTileDim)) px")
         print("Subdivision:   Max Depth \(quadtreeDepth), Sensitivity \(Int(quadtreeThreshold * 100))%, 2:1 Balanced: \(quadtreeBalanced ? "Yes" : "No")")
         if quadtreeAlgo == .variance {

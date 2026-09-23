@@ -189,8 +189,6 @@ static MacOSaiXIntegralImage MacOSaiXCreateIntegralImage(CGImageRef image) {
     
     if (grayCtx) {
         CGContextSetInterpolationQuality(grayCtx, kCGInterpolationLow);
-        CGContextTranslateCTM(grayCtx, 0, h);
-        CGContextScaleCTM(grayCtx, 1.0, -1.0);
         CGContextDrawImage(grayCtx, CGRectMake(0, 0, w, h), image);
         CGContextRelease(grayCtx);
     }
@@ -202,8 +200,6 @@ static MacOSaiXIntegralImage MacOSaiXCreateIntegralImage(CGImageRef image) {
     
     if (rgbCtx) {
         CGContextSetInterpolationQuality(rgbCtx, kCGInterpolationLow);
-        CGContextTranslateCTM(rgbCtx, 0, h);
-        CGContextScaleCTM(rgbCtx, 1.0, -1.0);
         CGContextDrawImage(rgbCtx, CGRectMake(0, 0, w, h), image);
         CGContextRelease(rgbCtx);
     }
@@ -833,35 +829,59 @@ static void MacOSaiXBalanceQuadNodes(NSArray<NSValue *> *rootNodes,
         MacOSaiXIntegralImage ii = (targetImage != NULL) ? MacOSaiXCreateIntegralImage(targetImage) : (MacOSaiXIntegralImage){0, 0, NULL, NULL, NULL, NULL, NULL};
         
         const float effectiveMinDim = (minTileDim > 1.0f) ? minTileDim : 16.0f;
+        const NSInteger wholeMaxDepth = (maxDepth > 0) ? (maxDepth + 3) : 6;
         const float effDepth = (maxDepth > 0) ? (float)maxDepth : 3.0f;
-        const float minUnitW = xSize / powf(2.0f, effDepth);
-        const float minUnitH = ySize / powf(2.0f, effDepth);
+        const float minUnitW = (algorithm == MacOSaiXQuadtreeAlgorithmWholeCanvas) ?
+            (mosaicSize.width / powf(2.0f, (float)wholeMaxDepth)) : (xSize / powf(2.0f, effDepth));
+        const float minUnitH = (algorithm == MacOSaiXQuadtreeAlgorithmWholeCanvas) ?
+            (mosaicSize.height / powf(2.0f, (float)wholeMaxDepth)) : (ySize / powf(2.0f, effDepth));
         
-        NSMutableArray<NSValue *> *rootNodes = [NSMutableArray arrayWithCapacity:(xCount * yCount)];
+        NSMutableArray<NSValue *> *rootNodes = [NSMutableArray arrayWithCapacity:(algorithm == MacOSaiXQuadtreeAlgorithmWholeCanvas ? 1 : xCount * yCount)];
         NSMutableArray<NSValue *> *leavesList = [NSMutableArray arrayWithCapacity:(xCount * yCount * 4)];
         
-        for (NSInteger y = 0; y < yCount; y++) {
-            for (NSInteger x = 0; x < xCount; x++) {
-                CGRect baseRect = CGRectMake(x * xSize, y * ySize, xSize, ySize);
-                MacOSaiXQuadNode *root = MacOSaiXBuildQuadTree(baseRect,
-                                                              0,
-                                                              maxDepth,
-                                                              threshold,
-                                                              effectiveMinDim,
-                                                              &ii,
-                                                              mosaicSize,
-                                                              detailAlpha,
-                                                              algorithm);
-                if (root) {
-                    [rootNodes addObject:[NSValue valueWithPointer:root]];
-                    MacOSaiXCollectLeaves(root, leavesList);
+        if (algorithm == MacOSaiXQuadtreeAlgorithmWholeCanvas) {
+            // Whole Canvas Quadtree: single canvas-wide root node, recursing top-down
+            CGRect canvasRect = CGRectMake(0, 0, mosaicSize.width, mosaicSize.height);
+            MacOSaiXQuadNode *root = MacOSaiXBuildQuadTree(canvasRect,
+                                                          0,
+                                                          wholeMaxDepth,
+                                                          threshold,
+                                                          effectiveMinDim,
+                                                          &ii,
+                                                          mosaicSize,
+                                                          detailAlpha,
+                                                          MacOSaiXQuadtreeAlgorithmJuliaRange);
+            if (root) {
+                [rootNodes addObject:[NSValue valueWithPointer:root]];
+                MacOSaiXCollectLeaves(root, leavesList);
+            }
+            if (balanced) {
+                MacOSaiXBalanceQuadNodes(rootNodes, leavesList, wholeMaxDepth, effectiveMinDim);
+            }
+        } else {
+            for (NSInteger y = 0; y < yCount; y++) {
+                for (NSInteger x = 0; x < xCount; x++) {
+                    CGRect baseRect = CGRectMake(x * xSize, y * ySize, xSize, ySize);
+                    MacOSaiXQuadNode *root = MacOSaiXBuildQuadTree(baseRect,
+                                                                  0,
+                                                                  maxDepth,
+                                                                  threshold,
+                                                                  effectiveMinDim,
+                                                                  &ii,
+                                                                  mosaicSize,
+                                                                  detailAlpha,
+                                                                  algorithm);
+                    if (root) {
+                        [rootNodes addObject:[NSValue valueWithPointer:root]];
+                        MacOSaiXCollectLeaves(root, leavesList);
+                    }
                 }
             }
-        }
-        
-        // Apply 2:1 balancing pass to eliminate harsh size disparity while respecting minTileDim
-        if (balanced) {
-            MacOSaiXBalanceQuadNodes(rootNodes, leavesList, maxDepth, effectiveMinDim);
+            
+            // Apply 2:1 balancing pass to eliminate harsh size disparity while respecting minTileDim
+            if (balanced) {
+                MacOSaiXBalanceQuadNodes(rootNodes, leavesList, maxDepth, effectiveMinDim);
+            }
         }
         
         // Convert balanced leaves into MacOSaiXTileGeometry

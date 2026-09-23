@@ -233,6 +233,7 @@ public final class MosaicViewModel: ObservableObject {
             switch self.quadtreeAlgorithm {
             case "colorRange": return .colorRange
             case "variance": return .variance
+            case "wholeCanvas": return .wholeCanvas
             default: return .juliaRange
             }
         }()
@@ -860,7 +861,7 @@ public final class MosaicViewModel: ObservableObject {
                     quadtreeThreshold: Float(self.quadtreeThreshold),
                     quadtreeBalanced: self.quadtreeBalanced,
                     quadtreeDetailAlpha: Float(self.quadtreeDetailAlpha),
-                    quadtreeAlgorithm: self.quadtreeAlgorithm == "colorRange" ? .colorRange : (self.quadtreeAlgorithm == "variance" ? .variance : .juliaRange),
+                    quadtreeAlgorithm: self.quadtreeAlgorithm == "wholeCanvas" ? .wholeCanvas : (self.quadtreeAlgorithm == "colorRange" ? .colorRange : (self.quadtreeAlgorithm == "variance" ? .variance : .juliaRange)),
                     quadtreeMinTileDim: Float(self.quadtreeMinTileDim)
                 )
                 
