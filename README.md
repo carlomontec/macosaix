@@ -35,6 +35,8 @@
 - **Faithful 2-Pane Interface**: Classic sidebar controls paired with a live progressive canvas and interactive original-vs-mosaic blend slider.
 - **2D Trackpad Navigation**: Glide across high-resolution mosaics with native macOS inertia and momentum; pinch-to-zoom (25% to 400%) or `⌘ + Scroll Wheel`.
 - **Top-Right Playback Toolbar**: Start/Pause (`⌘R`), Stop (`⌘.`), and Export (`⌘E`) conveniently accessible at the top right corner.
+- **Dock & Window Drag-and-Drop**: Drag `.macosaix` files onto the Dock icon or anywhere into the main window to open projects instantly; drag images onto the canvas to set the target.
+- **Single-Tile Inspection & "Find Substitute"**: Click any tile in the mosaic to inspect match quality, reveal the original in Finder, manually pick a replacement, or click **Find Substitute** to recompute and cycle to the 2nd/3rd best candidate photo on the fly.
 - **Lightweight Project Files (`.macosaix`)**: Save complete mosaic sessions as compressed packages (~30–60 KB). Preserves target paths, source directories, and matched tiles without duplicating gigabytes of photos. Double-click in Finder to resume instantly.
 
 ### 🔲 Adaptive Multi-Resolution Quadtree Tiling

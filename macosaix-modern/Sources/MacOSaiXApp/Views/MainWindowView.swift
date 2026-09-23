@@ -110,6 +110,7 @@ public struct MainWindowView: View {
             TileDetailPopover(tile: tile) {
                 viewModel.selectedTile = nil
             }
+            .environmentObject(viewModel)
         }
     }
 }

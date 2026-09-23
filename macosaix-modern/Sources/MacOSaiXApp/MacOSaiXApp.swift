@@ -1,8 +1,39 @@
 import SwiftUI
 import AppKit
 
+@MainActor
+final class MacOSaiXAppDelegate: NSObject, NSApplicationDelegate {
+    weak var viewModel: MosaicViewModel?
+    private var pendingOpenURL: URL?
+    
+    func setViewModel(_ vm: MosaicViewModel) {
+        self.viewModel = vm
+        if let pending = pendingOpenURL {
+            vm.openProject(from: pending)
+            pendingOpenURL = nil
+        }
+    }
+    
+    nonisolated func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        for filename in filenames {
+            let url = URL(fileURLWithPath: filename)
+            if url.pathExtension.lowercased() == "macosaix" {
+                Task { @MainActor [weak self] in
+                    if let vm = self?.viewModel {
+                        vm.openProject(from: url)
+                    } else {
+                        self?.pendingOpenURL = url
+                    }
+                }
+                break
+            }
+        }
+    }
+}
+
 @main
 struct MacOSaiXApp: App {
+    @NSApplicationDelegateAdaptor(MacOSaiXAppDelegate.self) private var appDelegate
     @StateObject private var viewModel = MosaicViewModel()
     
     var body: some Scene {
@@ -11,6 +42,9 @@ struct MacOSaiXApp: App {
                 .environmentObject(viewModel)
                 .frame(minWidth: 960, minHeight: 650)
                 .navigationTitle(viewModel.currentProjectURL?.lastPathComponent ?? "MacOSaiX Remake")
+                .onAppear {
+                    appDelegate.setViewModel(viewModel)
+                }
                 .onOpenURL { url in
                     if url.pathExtension.lowercased() == "macosaix" {
                         viewModel.openProject(from: url)

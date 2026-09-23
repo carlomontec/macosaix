@@ -84,6 +84,9 @@ MacOSaiX Remake is engineered from the ground up for modern macOS (macOS 14 Sono
 
 ### Window Overview & Toolbar
 
+- **Dock Icon & Window Drag-and-Drop**:
+  - Drag any `.macosaix` project file onto the app icon in the macOS Dock or directly into the main window to open the project.
+  - Drag any image file directly onto the canvas to set it as the basis target image.
 - **Top Left**:
   - **Open Project (`⌘O`)**: Open a previously saved `.macosaix` project package.
   - **Save Project (`⌘S`)**: Save the current mosaic setup, source directories, and matched tiles.
@@ -97,7 +100,7 @@ MacOSaiX Remake is engineered from the ground up for modern macOS (macOS 14 Sono
 
 ### Step 1: Selecting a Target Image
 
-Click **Choose Image...** in Section 1 of the sidebar to select the image your photomosaic will recreate.
+Click **Choose Image...** in Section 1 of the sidebar, or **drag an image directly onto the mosaic canvas**, to select the image your photomosaic will recreate.
 
 > [!TIP]
 > High-contrast images with well-defined subjects (portraits, architecture, distinctive objects, vehicles, landscapes) produce the most visually stunning photomosaics. Images with large blown-out white areas or pitch-black voids benefit most from our **Adaptive Quadtree** mode.
@@ -143,6 +146,11 @@ Select from four distinct tessellation models:
 - **2D Glide & Momentum**: Drag with two fingers on your trackpad to glide across the canvas with native macOS inertia.
 - **Pinch-to-Zoom**: Pinch on the trackpad or hold `⌘` and scroll to zoom smoothly between `25%` and `400%`.
 - **Compare Slider**: Drag the blend slider at the bottom of the canvas to seamlessly crossfade between the original target photo and the assembled mosaic.
+- **Tile Inspection & Substitution**:
+  - Click any tile on the preview canvas to open its detail inspector popover.
+  - **Find Substitute (`arrow.triangle.2.circlepath`)**: Recomputes candidate scores for that specific tile across all source photos, excluding the current photo. Clicking it repeatedly cycles through the 2nd best, 3rd best, 4th best candidates, updating the canvas in real time.
+  - **Choose Photo... (`photo.badge.plus`)**: Manually select any image from disk to place in this tile.
+  - **Reveal in Finder (`folder`)**: Selects and highlights the original constituent image in Finder.
 
 ### Step 6: Saving Projects & High-Resolution Export
 

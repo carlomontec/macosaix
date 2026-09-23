@@ -1,8 +1,10 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 import MacOSaiXCore
 
 public struct TileDetailPopover: View {
+    @EnvironmentObject private var viewModel: MosaicViewModel
     let tile: MacOSaiXTile
     let onClose: () -> Void
     
@@ -40,10 +42,49 @@ public struct TileDetailPopover: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
-                    Button("Reveal in Finder") {
-                        NSWorkspace.shared.activateFileViewerSelecting([imageURL])
+                    Divider()
+                        .padding(.vertical, 2)
+                    
+                    HStack(spacing: 6) {
+                        // Find Substitute (Next Best Candidate)
+                        Button(action: {
+                            viewModel.findSubstitute(for: tile)
+                        }) {
+                            HStack(spacing: 4) {
+                                if viewModel.isFindingSubstitute {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                } else {
+                                    Image(systemName: "arrow.triangle.2.circlepath")
+                                }
+                                Text("Find Substitute")
+                            }
+                        }
+                        .controlSize(.small)
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.isFindingSubstitute || viewModel.foundImageURLs.isEmpty)
+                        .help("Evaluate candidate images and assign the next-best matching photo for this tile")
+                        
+                        // Manual Choose Photo
+                        Button(action: {
+                            chooseManualPhoto()
+                        }) {
+                            Image(systemName: "photo.badge.plus")
+                        }
+                        .controlSize(.small)
+                        .buttonStyle(.bordered)
+                        .help("Choose any photo from disk to place in this tile")
+                        
+                        // Reveal in Finder
+                        Button(action: {
+                            NSWorkspace.shared.activateFileViewerSelecting([imageURL])
+                        }) {
+                            Image(systemName: "folder")
+                        }
+                        .controlSize(.small)
+                        .buttonStyle(.bordered)
+                        .help("Reveal original photo in Finder")
                     }
-                    .controlSize(.small)
                     .padding(.top, 4)
                 }
             } else {
@@ -51,9 +92,33 @@ public struct TileDetailPopover: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .padding(.vertical, 8)
+                
+                Button(action: {
+                    chooseManualPhoto()
+                }) {
+                    Label("Choose Photo...", systemImage: "photo.badge.plus")
+                }
+                .controlSize(.small)
+                .buttonStyle(.bordered)
             }
         }
         .padding()
-        .frame(width: 260)
+        .frame(width: 280)
+    }
+    
+    private func chooseManualPhoto() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        var types: [UTType] = [.image, .heic, .jpeg, .png, .tiff]
+        if let avif = UTType(filenameExtension: "avif") { types.append(avif) }
+        if let webp = UTType(filenameExtension: "webp") { types.append(webp) }
+        panel.allowedContentTypes = types
+        panel.prompt = "Select Photo"
+        
+        if panel.runModal() == .OK, let selectedURL = panel.url {
+            viewModel.manuallySubstitute(tile: tile, imageURL: selectedURL)
+        }
     }
 }

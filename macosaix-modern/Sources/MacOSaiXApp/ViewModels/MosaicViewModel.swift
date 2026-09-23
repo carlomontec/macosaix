@@ -110,6 +110,9 @@ public final class MosaicViewModel: ObservableObject {
     
     // Selected Tile for Inspection Popover
     @Published public var selectedTile: MacOSaiXTile?
+    @Published public var isFindingSubstitute: Bool = false
+    private var tileExcludedIdentifiers: [Int: Set<String>] = [:]
+    
     @Published public var isExportSheetPresented: Bool = false
     @Published public var isAboutPresented: Bool = false
     
@@ -125,6 +128,7 @@ public final class MosaicViewModel: ObservableObject {
     // Drag & drop highlight state
     @Published public var isTargetDropTargeted: Bool = false
     @Published public var isSourcesDropTargeted: Bool = false
+    @Published public var isCanvasDropTargeted: Bool = false
     
     // Export Sheet state
     @Published public var exportPreset: Int = 3000
@@ -216,6 +220,7 @@ public final class MosaicViewModel: ObservableObject {
         guard let cgImg = targetCGImage else { return }
         
         tilePrepTask?.cancel()
+        self.tileExcludedIdentifiers.removeAll()
         
         let shape = self.shapeType
         let across = self.tilesAcross
@@ -497,6 +502,51 @@ public final class MosaicViewModel: ObservableObject {
         isRunning = false
         isPaused = false
         statusMessage = "Stopped"
+    }
+    
+    // MARK: - Single-Tile Substitution
+    public func findSubstitute(for tile: MacOSaiXTile) {
+        guard let engine = self.engine else { return }
+        let tileIndex = tile.geometry.tileIndex
+        var excluded = tileExcludedIdentifiers[tileIndex] ?? Set<String>()
+        if let currentID = tile.bestImageIdentifier {
+            excluded.insert(currentID)
+        }
+        tileExcludedIdentifiers[tileIndex] = excluded
+        
+        self.isFindingSubstitute = true
+        
+        Task.detached(priority: .userInitiated) { [weak self, engine, tile, excluded] in
+            let candidates = await self?.foundImageURLs ?? []
+            let result = await engine.findSubstitute(
+                for: tile,
+                candidateURLs: candidates,
+                excludedIdentifiers: excluded
+            )
+            
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                self.isFindingSubstitute = false
+                if result != nil {
+                    self.canvasVersion += 1
+                    // Re-trigger SwiftUI state update for the popover
+                    let inspected = self.selectedTile
+                    self.selectedTile = nil
+                    self.selectedTile = inspected
+                }
+            }
+        }
+    }
+    
+    public func manuallySubstitute(tile: MacOSaiXTile, imageURL: URL) {
+        guard let engine = self.engine else { return }
+        let score = engine.manuallyAssignImage(from: imageURL, to: tile)
+        if score != nil {
+            self.canvasVersion += 1
+            let inspected = self.selectedTile
+            self.selectedTile = nil
+            self.selectedTile = inspected
+        }
     }
     
     // MARK: - Export

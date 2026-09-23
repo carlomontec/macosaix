@@ -187,11 +187,43 @@ public struct MosaicCanvasView: View {
                         Text("No Mosaic Loaded")
                             .font(.title3)
                             .foregroundColor(.secondary)
-                        Text("Drag a picture into the sidebar or click 'Choose Picture...' to start.")
+                        Text("Drag a picture or a .macosaix project here to start.")
                             .font(.callout)
                             .foregroundColor(.secondary.opacity(0.8))
                     }
                 }
+                
+                if viewModel.isCanvasDropTargeted {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(Color.accentColor, lineWidth: 3)
+                        .background(Color.accentColor.opacity(0.08))
+                        .padding(12)
+                        .overlay(
+                            VStack(spacing: 8) {
+                                Image(systemName: "arrow.down.doc.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.accentColor)
+                                Text("Drop Project (.macosaix) or Target Image")
+                                    .font(.headline)
+                                    .foregroundColor(.accentColor)
+                            }
+                        )
+                }
+            }
+            .onDrop(of: [.fileURL], isTargeted: $viewModel.isCanvasDropTargeted) { providers in
+                guard let provider = providers.first else { return false }
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let fileURL = url else { return }
+                    DispatchQueue.main.async {
+                        let ext = fileURL.pathExtension.lowercased()
+                        if ext == "macosaix" {
+                            viewModel.openProject(from: fileURL)
+                        } else {
+                            viewModel.setTargetImage(from: fileURL)
+                        }
+                    }
+                }
+                return true
             }
         }
     }

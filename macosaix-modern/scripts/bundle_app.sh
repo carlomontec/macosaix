@@ -67,6 +67,48 @@ cat << 'EOF' > "$CONTENTS_DIR/Info.plist"
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>MacOSaiX Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>macosaix</string>
+            </array>
+            <key>CFBundleTypeIconFile</key>
+            <string>AppIcon</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.carlomontec.macosaix.project</string>
+            </array>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.carlomontec.macosaix.project</string>
+            <key>UTTypeDescription</key>
+            <string>MacOSaiX Project</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+                <string>public.content</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>macosaix</string>
+                </array>
+            </dict>
+        </dict>
+    </array>
 </dict>
 </plist>
 EOF
