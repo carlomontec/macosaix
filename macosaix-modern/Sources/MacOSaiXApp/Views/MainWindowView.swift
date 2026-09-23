@@ -18,26 +18,30 @@ public struct MainWindowView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
-                // Play / Pause matching
+                // Open Project
                 Button(action: {
-                    viewModel.toggleMatching()
+                    viewModel.openProjectPrompt()
                 }) {
-                    Label(
-                        viewModel.isRunning ? (viewModel.isPaused ? "Resume" : "Pause") : "Start",
-                        systemImage: viewModel.isRunning ? (viewModel.isPaused ? "play.fill" : "pause.fill") : "play.fill"
-                    )
+                    Image(systemName: "folder")
                 }
-                .disabled(!viewModel.canStart && !viewModel.isRunning)
-                .keyboardShortcut("r", modifiers: [.command])
+                .help("Open Project (⌘O)")
                 
-                if viewModel.isRunning {
-                    Button(action: {
-                        viewModel.stopMatching()
-                    }) {
-                        Label("Stop", systemImage: "stop.fill")
-                    }
-                    .keyboardShortcut(".", modifiers: [.command])
+                // Save Project
+                Button(action: {
+                    viewModel.saveProject()
+                }) {
+                    Image(systemName: "square.and.arrow.down")
                 }
+                .help("Save Project (⌘S)")
+                .disabled(viewModel.targetCGImage == nil)
+                
+                // About Button
+                Button(action: {
+                    viewModel.isAboutPresented = true
+                }) {
+                    Image(systemName: "info.circle")
+                }
+                .help("About MacOSaiX Remake")
             }
             
             ToolbarItem(placement: .principal) {
@@ -64,23 +68,6 @@ public struct MainWindowView: View {
             }
             
             ToolbarItemGroup(placement: .primaryAction) {
-                // Open Project
-                Button(action: {
-                    viewModel.openProjectPrompt()
-                }) {
-                    Image(systemName: "folder")
-                }
-                .help("Open Project (⌘O)")
-                
-                // Save Project
-                Button(action: {
-                    viewModel.saveProject()
-                }) {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .help("Save Project (⌘S)")
-                .disabled(viewModel.targetCGImage == nil)
-                
                 // Export Button
                 Button(action: {
                     viewModel.isExportSheetPresented = true
@@ -90,13 +77,26 @@ public struct MainWindowView: View {
                 .disabled(!viewModel.hasCompletedTiles)
                 .keyboardShortcut("e", modifiers: [.command])
                 
-                // About Button
+                // Play / Pause matching (Top Right Corner)
                 Button(action: {
-                    viewModel.isAboutPresented = true
+                    viewModel.toggleMatching()
                 }) {
-                    Image(systemName: "info.circle")
+                    Label(
+                        viewModel.isRunning ? (viewModel.isPaused ? "Resume" : "Pause") : "Start",
+                        systemImage: viewModel.isRunning ? (viewModel.isPaused ? "play.fill" : "pause.fill") : "play.fill"
+                    )
                 }
-                .help("About MacOSaiX Remake")
+                .disabled(!viewModel.canStart && !viewModel.isRunning)
+                .keyboardShortcut("r", modifiers: [.command])
+                
+                if viewModel.isRunning {
+                    Button(action: {
+                        viewModel.stopMatching()
+                    }) {
+                        Label("Stop", systemImage: "stop.fill")
+                    }
+                    .keyboardShortcut(".", modifiers: [.command])
+                }
             }
         }
         .sheet(isPresented: $viewModel.isExportSheetPresented) {
