@@ -19,10 +19,29 @@ public final class MosaicThumbnailCache: @unchecked Sendable {
         sourceStatsCache.countLimit = 4000
     }
     
+    public func setThumbnail(_ image: CGImage, for url: URL) {
+        let key = url as NSURL
+        let cost = image.bytesPerRow * image.height
+        cache.setObject(image, forKey: key, cost: cost)
+    }
+    
     public func thumbnail(for url: URL, maxPixelSize: Int = 64) -> CGImage? {
         let key = url as NSURL
         if let cached = cache.object(forKey: key) {
             return cached
+        }
+        
+        // Handle Apple Photos assets
+        if url.scheme == "applephotos" {
+            if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               let idItem = comps.queryItems?.first(where: { $0.name == "id" })?.value {
+                if let thumb = ApplePhotosSource.shared.cachedDisplayThumbnail(byIdentifier: idItem, maxPixelSize: maxPixelSize) {
+                    let cost = thumb.bytesPerRow * thumb.height
+                    cache.setObject(thumb, forKey: key, cost: cost)
+                    return thumb
+                }
+            }
+            return nil
         }
         
         let opts: [CFString: Any] = [

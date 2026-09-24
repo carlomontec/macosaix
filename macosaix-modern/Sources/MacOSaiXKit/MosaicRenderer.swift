@@ -61,19 +61,25 @@ public final class MosaicRenderer {
                     let bounds = tile.geometry.bounds
                     let targetPixelDim = max(16, Int(max(bounds.width, bounds.height) * scale * 1.5))
                     
-                    let opts: [CFString: Any] = [
-                        kCGImageSourceShouldCache: false
-                    ]
-                    
                     var img: CGImage? = nil
-                    if let src = CGImageSourceCreateWithURL(imageURL as CFURL, opts as CFDictionary) {
-                        let drawOpts: [CFString: Any] = [
-                            kCGImageSourceCreateThumbnailFromImageAlways: true,
-                            kCGImageSourceThumbnailMaxPixelSize: targetPixelDim,
-                            kCGImageSourceCreateThumbnailWithTransform: true,
-                            kCGImageSourceShouldCacheImmediately: true
+                    if imageURL.scheme == "applephotos" {
+                        if let comps = URLComponents(url: imageURL, resolvingAgainstBaseURL: false),
+                           let idItem = comps.queryItems?.first(where: { $0.name == "id" })?.value {
+                            img = ApplePhotosSource.shared.cachedDisplayThumbnail(byIdentifier: idItem, maxPixelSize: targetPixelDim)
+                        }
+                    } else {
+                        let opts: [CFString: Any] = [
+                            kCGImageSourceShouldCache: false
                         ]
-                        img = CGImageSourceCreateThumbnailAtIndex(src, 0, drawOpts as CFDictionary)
+                        if let src = CGImageSourceCreateWithURL(imageURL as CFURL, opts as CFDictionary) {
+                            let drawOpts: [CFString: Any] = [
+                                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                                kCGImageSourceThumbnailMaxPixelSize: targetPixelDim,
+                                kCGImageSourceCreateThumbnailWithTransform: true,
+                                kCGImageSourceShouldCacheImmediately: true
+                            ]
+                            img = CGImageSourceCreateThumbnailAtIndex(src, 0, drawOpts as CFDictionary)
+                        }
                     }
                     
                     if var cgImage = img {

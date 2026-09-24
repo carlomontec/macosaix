@@ -22,7 +22,7 @@ public struct TileDetailPopover: View {
             }
             
             if let imageURL = tile.bestImageURL {
-                if let nsImg = NSImage(contentsOf: imageURL) {
+                if let nsImg = viewModel.imageForTile(tile) {
                     Image(nsImage: nsImg)
                         .resizable()
                         .scaledToFit()
@@ -32,10 +32,20 @@ public struct TileDetailPopover: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(imageURL.lastPathComponent)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .lineLimit(1)
+                    if imageURL.scheme == "applephotos" {
+                        HStack(spacing: 4) {
+                            Image(systemName: "photo.stack")
+                                .foregroundColor(.accentColor)
+                            Text("Apple Photos")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                        }
+                    } else {
+                        Text(imageURL.lastPathComponent)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .lineLimit(1)
+                    }
                     
                     let matchPct = max(0, min(100, Int((1.0 - tile.bestScore) * 100)))
                     Text("Match Quality: \(matchPct)%")
@@ -75,15 +85,17 @@ public struct TileDetailPopover: View {
                         .buttonStyle(.bordered)
                         .help("Choose any photo from disk to place in this tile")
                         
-                        // Reveal in Finder
-                        Button(action: {
-                            NSWorkspace.shared.activateFileViewerSelecting([imageURL])
-                        }) {
-                            Image(systemName: "folder")
+                        // Reveal in Finder (for local files)
+                        if imageURL.isFileURL {
+                            Button(action: {
+                                NSWorkspace.shared.activateFileViewerSelecting([imageURL])
+                            }) {
+                                Image(systemName: "folder")
+                            }
+                            .controlSize(.small)
+                            .buttonStyle(.bordered)
+                            .help("Reveal original photo in Finder")
                         }
-                        .controlSize(.small)
-                        .buttonStyle(.bordered)
-                        .help("Reveal original photo in Finder")
                     }
                     .padding(.top, 4)
                 }

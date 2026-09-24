@@ -2,9 +2,23 @@ import SwiftUI
 import AppKit
 import CoreGraphics
 import ImageIO
+import Photos
 import MacOSaiXCore
 import MacOSaiXKit
 import UniformTypeIdentifiers
+
+public enum ImageSourceMode: String, CaseIterable, Identifiable {
+    case localFolders = "Local Folders"
+    case applePhotos = "Apple Photos"
+    
+    public var id: String { rawValue }
+    public var iconName: String {
+        switch self {
+        case .localFolders: return "folder"
+        case .applePhotos: return "photo.stack"
+        }
+    }
+}
 
 @MainActor
 public final class MosaicViewModel: ObservableObject {
@@ -89,10 +103,30 @@ public final class MosaicViewModel: ObservableObject {
     @Published public var quadtreeSizeSummary: String = ""
     
     // MARK: - Image Sources State
+    @Published public var sourceMode: ImageSourceMode = .localFolders {
+        didSet {
+            if sourceMode != oldValue {
+                handleSourceModeChange()
+            }
+        }
+    }
     @Published public var sourceFolders: [URL] = []
     @Published public var foundImageURLs: [URL] = []
+    @Published public var candidateItems: [MosaicCandidateItem] = []
     @Published public var heicCount: Int = 0
     @Published public var formatBreakdownText: String = ""
+    
+    // Apple Photos State
+    @Published public var photosAuthStatus: PHAuthorizationStatus = .notDetermined
+    @Published public var availableAlbums: [MosaicAlbumItem] = []
+    @Published public var selectedAlbumID: String = "all" {
+        didSet {
+            if selectedAlbumID != oldValue && sourceMode == .applePhotos {
+                loadApplePhotosCandidates()
+            }
+        }
+    }
+    @Published public var isLoadingPhotos: Bool = false
     
     // MARK: - Execution & Matching State
     @Published public var engine: MosaicEngine?
@@ -142,7 +176,12 @@ public final class MosaicViewModel: ObservableObject {
     private var tilePrepTask: Task<Void, Never>?
     private let loader = ImageLoader()
     
-    public init() {}
+    public init() {
+        self.photosAuthStatus = ApplePhotosSource.authorizationStatus()
+        if self.photosAuthStatus == .authorized || self.photosAuthStatus == .limited {
+            self.availableAlbums = ApplePhotosSource.shared.fetchAvailableAlbums()
+        }
+    }
     
     public var canStart: Bool {
         return targetCGImage != nil && !foundImageURLs.isEmpty && !isRunning
@@ -370,6 +409,88 @@ public final class MosaicViewModel: ObservableObject {
         self.isMemorySafe = est.isSafe
     }
     
+    // MARK: - Image Source Providers Handling
+    public var isPhotosAuthorized: Bool {
+        return photosAuthStatus == .authorized || photosAuthStatus == .limited
+    }
+    
+    public func handleSourceModeChange() {
+        if sourceMode == .localFolders {
+            rescanSources()
+        } else if sourceMode == .applePhotos {
+            refreshPhotosAuthorization()
+        }
+    }
+    
+    public func refreshPhotosAuthorization() {
+        self.photosAuthStatus = ApplePhotosSource.authorizationStatus()
+        if isPhotosAuthorized {
+            self.availableAlbums = ApplePhotosSource.shared.fetchAvailableAlbums()
+            loadApplePhotosCandidates()
+        } else {
+            self.foundImageURLs = []
+            self.candidateItems = []
+            self.totalImagesCount = 0
+            self.formatBreakdownText = "Photo access not granted"
+            updateMemoryEstimate()
+        }
+    }
+    
+    public func requestPhotosAccess() {
+        Task { @MainActor in
+            let status = await ApplePhotosSource.requestAuthorization()
+            self.photosAuthStatus = status
+            if self.isPhotosAuthorized {
+                self.availableAlbums = ApplePhotosSource.shared.fetchAvailableAlbums()
+                self.loadApplePhotosCandidates()
+            }
+        }
+    }
+    
+    public func loadApplePhotosCandidates() {
+        guard isPhotosAuthorized else { return }
+        self.isLoadingPhotos = true
+        self.statusMessage = "Loading Photos library..."
+        
+        ApplePhotosSource.shared.selectedAlbumID = selectedAlbumID
+        
+        Task { @MainActor in
+            do {
+                let items = try await ApplePhotosSource.shared.enumerateCandidates()
+                self.candidateItems = items
+                self.foundImageURLs = items.map { $0.canonicalURL }
+                self.totalImagesCount = items.count
+                let albumTitle = self.availableAlbums.first(where: { $0.id == self.selectedAlbumID })?.title ?? "Photos"
+                self.formatBreakdownText = "\(items.count) photos in \(albumTitle)"
+                self.isLoadingPhotos = false
+                self.updateMemoryEstimate()
+                if self.targetCGImage != nil && !self.foundImageURLs.isEmpty {
+                    self.statusMessage = "Ready to start! Found \(self.foundImageURLs.count) photos."
+                } else {
+                    self.statusMessage = "Ready to start!"
+                }
+            } catch {
+                self.isLoadingPhotos = false
+                self.statusMessage = "Error loading photos: \(error.localizedDescription)"
+            }
+        }
+    }
+    
+    public func imageForTile(_ tile: MacOSaiXTile) -> NSImage? {
+        guard let url = tile.bestImageURL else { return nil }
+        if url.scheme == "applephotos" {
+            if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               let idItem = comps.queryItems?.first(where: { $0.name == "id" })?.value {
+                if let cgImg = ApplePhotosSource.shared.cachedDisplayThumbnail(byIdentifier: idItem, maxPixelSize: 320) {
+                    return NSImage(cgImage: cgImg, size: NSSize(width: cgImg.width, height: cgImg.height))
+                }
+            }
+        } else if url.isFileURL {
+            return NSImage(contentsOf: url)
+        }
+        return nil
+    }
+    
     // MARK: - Matching Execution
     public func toggleMatching() {
         if isRunning {
@@ -386,9 +507,11 @@ public final class MosaicViewModel: ObservableObject {
         self.isPaused = false
         self.statusMessage = "Matching photos..."
         
+        let mode = self.sourceMode
         let candidates = self.foundImageURLs
+        let items = self.candidateItems
         
-        matchingTask = Task.detached(priority: .userInitiated) { [weak self, engine, candidates] in
+        matchingTask = Task.detached(priority: .userInitiated) { [weak self, engine, candidates, items, mode] in
             let total = candidates.count
             var count = 0
             let loader = ImageLoader()
@@ -405,27 +528,49 @@ public final class MosaicViewModel: ObservableObject {
                 if Task.isCancelled { break }
                 
                 let endIndex = min(index + batchSize, total)
-                let currentChunk = Array(candidates[index..<endIndex])
-                index = endIndex
-                
-                // Decode thumbnails in parallel across all Apple Silicon CPU cores
                 var chunkCandidates: [SourceImageCandidate] = []
-                chunkCandidates.reserveCapacity(currentChunk.count)
                 
-                await withTaskGroup(of: SourceImageCandidate?.self) { group in
-                    for url in currentChunk {
-                        group.addTask {
-                            if Task.isCancelled { return nil }
-                            if let thumbData = loader.loadThumbnail(from: url, targetSize: 16) {
-                                return SourceImageCandidate(identifier: url.path, url: url, thumbnailPixels: thumbData)
+                if mode == .applePhotos && !items.isEmpty {
+                    let currentChunk = Array(items[index..<endIndex])
+                    index = endIndex
+                    chunkCandidates.reserveCapacity(currentChunk.count)
+                    
+                    await withTaskGroup(of: SourceImageCandidate?.self) { group in
+                        for item in currentChunk {
+                            group.addTask {
+                                if Task.isCancelled { return nil }
+                                if let thumbData = try? await ApplePhotosSource.shared.loadCandidateThumbnail(for: item) {
+                                    return SourceImageCandidate(identifier: item.id, url: item.canonicalURL, thumbnailPixels: thumbData)
+                                }
+                                return nil
                             }
-                            return nil
+                        }
+                        for await cand in group {
+                            if let cand = cand {
+                                chunkCandidates.append(cand)
+                            }
                         }
                     }
+                } else {
+                    let currentChunk = Array(candidates[index..<endIndex])
+                    index = endIndex
+                    chunkCandidates.reserveCapacity(currentChunk.count)
                     
-                    for await cand in group {
-                        if let cand = cand {
-                            chunkCandidates.append(cand)
+                    await withTaskGroup(of: SourceImageCandidate?.self) { group in
+                        for url in currentChunk {
+                            group.addTask {
+                                if Task.isCancelled { return nil }
+                                if let thumbData = loader.loadThumbnail(from: url, targetSize: 16) {
+                                    return SourceImageCandidate(identifier: url.path, url: url, thumbnailPixels: thumbData)
+                                }
+                                return nil
+                            }
+                        }
+                        
+                        for await cand in group {
+                            if let cand = cand {
+                                chunkCandidates.append(cand)
+                            }
                         }
                     }
                 }
@@ -449,7 +594,7 @@ public final class MosaicViewModel: ObservableObject {
                     }
                 }
                 
-                count += currentChunk.count
+                count = endIndex
                 let currentCount = count
                 
                 // Update UI status at the end of each batch or on completion

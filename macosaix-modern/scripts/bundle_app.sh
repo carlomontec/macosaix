@@ -67,6 +67,8 @@ cat << 'EOF' > "$CONTENTS_DIR/Info.plist"
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>MacOSaiX needs access to your Photos library to use your pictures as mosaic tiles.</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

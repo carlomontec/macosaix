@@ -255,50 +255,129 @@ public struct SidebarView: View {
                 }
                 
                 // Section 3: Photo Sources
-                GroupBox(label: Label("Photo Sources", systemImage: "folder")) {
+                GroupBox(label: Label("Photo Sources", systemImage: "photo.stack")) {
                     VStack(alignment: .leading, spacing: 8) {
-                        if viewModel.sourceFolders.isEmpty {
-                            Text("No folders added yet.\nDrag & drop folders here or click + Add Folder.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.vertical, 4)
-                        } else {
-                            ForEach(viewModel.sourceFolders, id: \.self) { folder in
-                                HStack {
-                                    Image(systemName: "folder.fill")
-                                        .foregroundColor(.accentColor)
-                                        .font(.caption)
-                                    Text(folder.lastPathComponent)
-                                        .font(.caption)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                    Spacer()
-                                    Button(action: {
-                                        viewModel.removeSourceFolder(folder)
-                                    }) {
-                                        Image(systemName: "trash")
-                                            .font(.caption2)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(.vertical, 2)
+                        Picker("Provider", selection: $viewModel.sourceMode) {
+                            ForEach(ImageSourceMode.allCases) { mode in
+                                Label(mode.rawValue, systemImage: mode.iconName).tag(mode)
                             }
                         }
+                        .pickerStyle(.segmented)
+                        .disabled(viewModel.isRunning)
                         
-                        HStack {
-                            Button("+ Add Folder...") {
-                                chooseSourceFolder()
-                            }
-                            .controlSize(.small)
-                            .disabled(viewModel.isRunning)
-                            
-                            Spacer()
-                            
-                            if !viewModel.foundImageURLs.isEmpty {
-                                Text("\(viewModel.foundImageURLs.count) photos")
-                                    .font(.caption2)
+                        if viewModel.sourceMode == .localFolders {
+                            if viewModel.sourceFolders.isEmpty {
+                                Text("No folders added yet.\nDrag & drop folders here or click + Add Folder.")
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .padding(.vertical, 4)
+                            } else {
+                                ForEach(viewModel.sourceFolders, id: \.self) { folder in
+                                    HStack {
+                                        Image(systemName: "folder.fill")
+                                            .foregroundColor(.accentColor)
+                                            .font(.caption)
+                                        Text(folder.lastPathComponent)
+                                            .font(.caption)
+                                            .lineLimit(1)
+                                            .truncationMode(.middle)
+                                        Spacer()
+                                        Button(action: {
+                                            viewModel.removeSourceFolder(folder)
+                                        }) {
+                                            Image(systemName: "trash")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.vertical, 2)
+                                }
+                            }
+                            
+                            HStack {
+                                Button("+ Add Folder...") {
+                                    chooseSourceFolder()
+                                }
+                                .controlSize(.small)
+                                .disabled(viewModel.isRunning)
+                                
+                                Spacer()
+                                
+                                if !viewModel.foundImageURLs.isEmpty {
+                                    Text("\(viewModel.foundImageURLs.count) photos")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        } else if viewModel.sourceMode == .applePhotos {
+                            if !viewModel.isPhotosAuthorized {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "lock.shield")
+                                            .foregroundColor(.accentColor)
+                                        Text("Photos Access Required")
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                    }
+                                    Text("MacOSaiX scans local thumbnail caches with zero network traffic.")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    
+                                    Button("Connect Photos Library") {
+                                        viewModel.requestPhotosAccess()
+                                    }
+                                    .controlSize(.small)
+                                    .buttonStyle(.borderedProminent)
+                                    .padding(.top, 2)
+                                }
+                                .padding(8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(Color.accentColor.opacity(0.08))
+                                )
+                            } else {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text("Album:")
+                                            .font(.caption)
+                                        Spacer()
+                                        Picker("", selection: $viewModel.selectedAlbumID) {
+                                            ForEach(viewModel.availableAlbums) { album in
+                                                Label("\(album.title) (\(album.count))", systemImage: album.iconName)
+                                                    .tag(album.id)
+                                            }
+                                        }
+                                        .pickerStyle(.menu)
+                                        .disabled(viewModel.isRunning || viewModel.isLoadingPhotos)
+                                    }
+                                    
+                                    HStack {
+                                        if viewModel.isLoadingPhotos {
+                                            ProgressView()
+                                                .controlSize(.mini)
+                                            Text("Loading album...")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        } else {
+                                            Text("\(viewModel.foundImageURLs.count) photos ready")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                        Button(action: {
+                                            viewModel.refreshPhotosAuthorization()
+                                        }) {
+                                            Image(systemName: "arrow.clockwise")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(viewModel.isRunning || viewModel.isLoadingPhotos)
+                                        .help("Refresh Photos library albums")
+                                    }
+                                }
                             }
                         }
                         
@@ -336,6 +415,7 @@ public struct SidebarView: View {
                         )
                 )
                 .onDrop(of: [.fileURL], isTargeted: $viewModel.isSourcesDropTargeted) { providers in
+                    viewModel.sourceMode = .localFolders
                     handleDroppedSources(providers)
                     return true
                 }
