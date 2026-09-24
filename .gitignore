@@ -17,3 +17,4 @@ macosaix-modern/test/*.jpg
 macosaix-modern/test/*.heic
 macosaix-modern/test_*.png
 *.png
+*.zip
