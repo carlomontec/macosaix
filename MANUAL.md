@@ -54,6 +54,10 @@ MacOSaiX Remake is engineered from the ground up for modern macOS (macOS 14 Sono
 - **Safe Memory Architecture**: All 10-bit / HDR surfaces and color-managed images are normalized to contiguous 8-bit sRGB buffers before processing, preventing kernel faults or GPU out-of-memory crashes.
 - **Progressive Live Assembly**: Watch tiles refine and update on the fly as better matching photos are discovered.
 
+> [!NOTE]
+> **Ad-Hoc Signing & First Launch on macOS**:  
+> Because MacOSaiX Remake is a free community open-source project without a paid Apple Developer subscription (\$99/year), macOS Gatekeeper may show a standard prompt on first launch. To permit launch, simply **right-click `MacOSaiX Remake.app` in Finder $\to$ Open $\to$ Open**, or click **Open Anyway** in **System Settings $\to$ Privacy & Security**.
+
 ---
 
 ## 2. Graphical User Interface (GUI) Guide

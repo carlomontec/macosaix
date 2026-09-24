@@ -80,11 +80,20 @@
 
 ### Launching the Desktop Application
 
-A pre-built, codesigned application is included in the repository:
+A pre-built application bundle is included in GitHub Releases and the repository:
 
 ```bash
 open "MacOSaiX Remake.app"
 ```
+
+> [!IMPORTANT]
+> **macOS Gatekeeper Notice (Ad-Hoc Signing)**  
+> Because **MacOSaiX Remake** is an independent, 100% free open-source project without a paid Apple Developer subscription (\$99/year), macOS Gatekeeper may display a prompt on first launch stating that Apple cannot check it for malicious software.
+>
+> **How to open it (only needed once):**
+> 1. **Finder**: **Right-click (or Control-click)** `MacOSaiX Remake.app` $\to$ select **Open** $\to$ click **Open** in the confirmation dialog.
+> 2. **System Settings**: Go to **System Settings $\to$ Privacy & Security**, scroll down, and click **"Open Anyway"**.
+> 3. **Terminal**: Run `xattr -cr "MacOSaiX Remake.app"` to remove the quarantine flag.
 
 To build and package from source anytime:
 ```bash
