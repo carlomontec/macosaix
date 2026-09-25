@@ -67,6 +67,27 @@ cat << 'EOF' > "$CONTENTS_DIR/Info.plist"
     <true/>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>MacOSaiX Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>macosaix</string>
+            </array>
+            <key>CFBundleTypeIconFile</key>
+            <string>AppIcon</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.carlomontec.macosaix.project</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
 EOF
@@ -75,7 +96,7 @@ EOF
 echo "==> Signing application bundle (ad-hoc)..."
 codesign --force --deep --sign - "$APP_DIR"
 
-# Also symlink / copy to project root for convenience
+# Also copy to project root for convenience
 rm -rf "$REPO_ROOT/MacOSaiX Remake.app" "$REPO_ROOT/MacOSaiX.app"
 cp -R "$APP_DIR" "$REPO_ROOT/MacOSaiX Remake.app"
 

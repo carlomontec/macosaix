@@ -16,10 +16,6 @@ let package = Package(
             targets: ["MacOSaiXKit"]
         ),
         .executable(
-            name: "macosaix-cli",
-            targets: ["macosaix-cli"]
-        ),
-        .executable(
             name: "MacOSaiXApp",
             targets: ["MacOSaiXApp"]
         )
@@ -37,11 +33,6 @@ let package = Package(
             name: "MacOSaiXKit",
             dependencies: ["MacOSaiXCore"],
             path: "Sources/MacOSaiXKit"
-        ),
-        .executableTarget(
-            name: "macosaix-cli",
-            dependencies: ["MacOSaiXCore", "MacOSaiXKit"],
-            path: "Sources/macosaix-cli"
         ),
         .executableTarget(
             name: "MacOSaiXApp",

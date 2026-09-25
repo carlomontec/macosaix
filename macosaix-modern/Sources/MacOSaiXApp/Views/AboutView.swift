@@ -22,7 +22,7 @@ public struct AboutView: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("Version 3.0.0 (Apple Silicon Native)")
+                Text("Apple Silicon Native • Classic Revival")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -31,39 +31,28 @@ public struct AboutView: View {
             
             // Description & Credits
             VStack(alignment: .leading, spacing: 14) {
-                Text("A modern Apple Silicon remake of the classic Mac OS X photomosaic creator.")
+                Text("A modern Apple Silicon revival of Frank M. Midgley's classic Mac OS X photomosaic software.")
                     .font(.callout)
                     .foregroundColor(.primary)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Historical Origins:")
+                    Text("Original Software:")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)
-                    Text("Original concept, design, and algorithms created by Frank M. Midgley (2002–2007). Widely celebrated as the premier photomosaic creator on classic Mac OS X.")
+                    Text("Created by Frank M. Midgley (2002–2009). MacOSaiX was the premier open-source photomosaic creator for classic Mac OS X.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Modern Remake:")
+                    Text("About this Remake:")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)
-                    Text("Revived and rebuilt by Carlo Monjaraz-Tec (2026) using AI-assisted coding (paired with Google Antigravity). It preserves Frank Midgley's original cubic Bezier jigsaw puzzle mathematics, hexagonal tessellations, and Riemersma perceptual color metrics, upgraded with modern additions:")
+                    Text("This project modernizes the original application to run natively on 64-bit Apple Silicon and modern macOS while preserving the classic feature set, mathematics, and user experience.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        bulletPoint("Native Apple HEIC (.heic) photo decoding via ImageIO")
-                        bulletPoint("Multi-threaded asynchronous constraint solver")
-                        bulletPoint("Real-time RAM pre-flight safety guard")
-                        bulletPoint("Modern SwiftUI interface with live progressive canvas")
-                        bulletPoint("Ultra-high-resolution bounded-memory vector exporter")
-                        bulletPoint("AI-assisted development & modern Apple Silicon architecture")
-                    }
-                    .padding(.top, 2)
-                    .padding(.leading, 6)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,11 +62,11 @@ public struct AboutView: View {
             // Footer & Link
             HStack {
                 Button(action: {
-                    if let url = URL(string: "https://github.com/carlomontec/macosaix") {
+                    if let url = URL(string: "https://github.com/carlomontec/MacOSaiX_Remake") {
                         NSWorkspace.shared.open(url)
                     }
                 }) {
-                    Label("GitHub Project", systemImage: "link")
+                    Label("GitHub Repository", systemImage: "link")
                 }
                 .buttonStyle(.link)
                 
@@ -91,17 +80,6 @@ public struct AboutView: View {
             }
         }
         .padding(26)
-        .frame(width: 480)
-    }
-    
-    private func bulletPoint(_ text: String) -> some View {
-        HStack(alignment: .top, spacing: 6) {
-            Text("•")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text(text)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
+        .frame(width: 440)
     }
 }
