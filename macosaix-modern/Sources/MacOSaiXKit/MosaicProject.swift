@@ -1,6 +1,5 @@
 import Foundation
 import CoreGraphics
-import MacOSaiXCore
 
 /// Data representation of a MacOSaiX Remake project file (.macosaix)
 public struct MacOSaiXProject: Codable, Sendable {

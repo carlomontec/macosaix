@@ -3,7 +3,6 @@ import AppKit
 import CoreGraphics
 import ImageIO
 import Photos
-import MacOSaiXCore
 import MacOSaiXKit
 import UniformTypeIdentifiers
 

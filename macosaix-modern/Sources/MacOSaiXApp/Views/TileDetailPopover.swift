@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
-import MacOSaiXCore
+import MacOSaiXKit
 
 public struct TileDetailPopover: View {
     @EnvironmentObject private var viewModel: MosaicViewModel

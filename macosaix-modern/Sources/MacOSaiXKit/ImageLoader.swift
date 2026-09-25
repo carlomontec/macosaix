@@ -2,9 +2,6 @@ import Foundation
 import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
-import MacOSaiXCore
-
-extension MacOSaiXEdgeDescriptor: @retroactive @unchecked Sendable {}
 
 public struct SourceImageCandidate: Sendable {
     public let identifier: String

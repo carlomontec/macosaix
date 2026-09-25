@@ -4,13 +4,10 @@ import PackageDescription
 let package = Package(
     name: "MacOSaiXModern",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v13),
+        .iOS(.v16)
     ],
     products: [
-        .library(
-            name: "MacOSaiXCore",
-            targets: ["MacOSaiXCore"]
-        ),
         .library(
             name: "MacOSaiXKit",
             targets: ["MacOSaiXKit"]
@@ -26,26 +23,18 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "MacOSaiXCore",
-            path: "Sources/MacOSaiXCore",
-            publicHeadersPath: "include",
-            cSettings: [
-                .headerSearchPath("include")
-            ]
-        ),
-        .target(
             name: "MacOSaiXKit",
-            dependencies: ["MacOSaiXCore"],
+            dependencies: [],
             path: "Sources/MacOSaiXKit"
         ),
         .executableTarget(
             name: "macosaix-cli",
-            dependencies: ["MacOSaiXCore", "MacOSaiXKit"],
+            dependencies: ["MacOSaiXKit"],
             path: "Sources/macosaix-cli"
         ),
         .executableTarget(
             name: "MacOSaiXApp",
-            dependencies: ["MacOSaiXCore", "MacOSaiXKit"],
+            dependencies: ["MacOSaiXKit"],
             path: "Sources/MacOSaiXApp"
         )
     ],

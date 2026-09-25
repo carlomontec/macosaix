@@ -1,6 +1,6 @@
 import SwiftUI
 import AppKit
-import MacOSaiXCore
+import MacOSaiXKit
 
 public struct SidebarView: View {
     @EnvironmentObject private var viewModel: MosaicViewModel

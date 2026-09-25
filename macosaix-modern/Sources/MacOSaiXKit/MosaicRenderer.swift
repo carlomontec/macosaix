@@ -2,7 +2,6 @@ import Foundation
 import CoreGraphics
 import ImageIO
 import UniformTypeIdentifiers
-import MacOSaiXCore
 
 public final class MosaicRenderer {
     public init() {}

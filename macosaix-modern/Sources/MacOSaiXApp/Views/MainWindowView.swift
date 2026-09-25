@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import MacOSaiXCore
 import MacOSaiXKit
 
 public struct MainWindowView: View {
@@ -116,7 +115,7 @@ public struct MainWindowView: View {
 }
 
 // Extension to allow MacOSaiXTile in .popover(item:)
-extension MacOSaiXTile: @retroactive Identifiable {
+extension MacOSaiXTile: Identifiable {
     public var id: Int {
         return self.geometry.tileIndex
     }

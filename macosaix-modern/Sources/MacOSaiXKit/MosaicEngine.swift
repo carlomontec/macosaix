@@ -1,7 +1,6 @@
 import Foundation
 import CoreGraphics
 import ImageIO
-import MacOSaiXCore
 
 public final class MosaicEngine: @unchecked Sendable {
     public let shapeType: MacOSaiXShapeType

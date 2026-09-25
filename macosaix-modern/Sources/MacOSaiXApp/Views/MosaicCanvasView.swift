@@ -2,7 +2,6 @@ import SwiftUI
 import AppKit
 import CoreGraphics
 import ImageIO
-import MacOSaiXCore
 import MacOSaiXKit
 
 public struct MosaicCanvasView: View {

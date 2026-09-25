@@ -1,7 +1,6 @@
 import Foundation
 import CoreGraphics
 import Accelerate
-import MacOSaiXCore
 
 /// Represents statistical color properties (mean and standard deviation) in OKLab perceptual color space.
 public struct ColorStatistics: Sendable, Codable, Equatable {
