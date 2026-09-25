@@ -1,12 +1,12 @@
-# MacOSaiX Remake — Modern Apple Silicon Architecture
+# MosaicLab — Apple Silicon Architecture
 
 <p align="center">
-  <img src="../docs/screenshot.png" alt="MacOSaiX Remake in Action" width="850">
+  <img src="../docs/screenshot.png" alt="MosaicLab in Action" width="850">
 </p>
 
 <p align="center">
-  <strong>The classic Mac photomosaic creator revived and rebuilt for modern Apple Silicon.</strong><br>
-  Modernized and expanded by <strong>Carlo Monjaraz-Tec</strong> (2026) from <strong>Frank M. Midgley's</strong> original MacOSaiX.
+  <strong>A native macOS and iOS photomosaic tool built with modern Swift and image processing algorithms.</strong><br>
+  Engineered by <strong>Carlo Monjaraz-Tec</strong> (2026). Inspired by classic Mac software <em>MacOSaiX</em> by Frank M. Midgley.
 </p>
 
 <p align="center">
@@ -18,31 +18,29 @@
 
 ## Architecture Overview
 
-`macosaix-modern` is structured into four modular targets:
+`macosaix-modern` is a 100% pure-Swift modular package targeting `.macOS(.v13)` and `.iOS(.v16)`:
 
-1. **`MacOSaiXCore` (Objective-C / C)**:
-   - High-performance mathematical shapes and tessellations (`MacOSaiXShapes.m`).
-   - Adaptive Quadtree decomposition engine with 4 algorithms:
-     - **Whole Canvas Quadtree**: Single-root canvas decomposition.
-     - **Julia Extrema Range**: `(max - min) < threshold` homogeneity test.
-     - **RGB Color Range**: Chebyshev multi-channel color divergence.
-     - **Variance / Hybrid**: Crow (1984) Summed-Area Table integral images.
-   - 2:1 balanced neighbor transitions and strict minimum tile size floors.
-   - Perceptual color matching engine with Riemersma weighting and OKLab Reinhard color transfer (`MacOSaiXMatcher.m`).
+1. **`MacOSaiXKit` (Pure-Swift Computational Engine)**:
+   - **`Core/TileGeometry.swift`**: Native vector tessellation for rectangular, hexagonal, and cubic Bézier puzzle pieces. Adaptive quadtree decomposition supporting Julia-range extrema, Chebyshev RGB color-range, and $O(1)$ integral image variance with 2:1 topological balancing.
+   - **`Core/TileMatcher.swift`**: Vectorized Riemersma perceptual color metric, Euclidean RGB, monochrome luminance, and Sobel HOG 8-bin directional vector matching with saliency gating.
+   - **`Core/TileModel.swift`**: Bounded 16x16 thumbnail extraction and vector mask rasterization via modern CoreGraphics bitmap contexts.
+   - **`ImageLoader.swift`**: Hardware-accelerated decoding via `ImageIO` (AVIF, HEIC, WebP, PNG, JPEG, TIFF).
+   - **`MosaicEngine.swift`**: Multi-threaded parallel solver utilizing Swift Concurrency `TaskGroup`.
+   - **`MosaicProject.swift`**: Lightweight project serialization (`.mosaiclab` and `.macosaix`).
+   - **`ColorTransfer.swift`**: Statistical palette distribution shifting in perceptual OKLab space.
+   - **`ApplePhotosSource.swift`**: PhotoKit integration for Apple Photos albums and smart collections.
+   - **`LocalFolderImageSource.swift`**: Asynchronous file system crawler with deep folder discovery.
+   - **`MosaicRenderer.swift`**: Memory-bounded high-resolution vector mosaic exporter.
+   - **`ThumbnailCache.swift`**: High-performance in-memory and disk caching.
+   - **`Platform/PlatformCompatibility.swift`**: Cross-platform AppKit/UIKit abstractions.
 
-2. **`MacOSaiXKit` (Swift Package)**:
-   - **`ImageLoader`**: Hardware-accelerated decoding via `ImageIO` (AVIF, HEIC, WebP, PNG, JPEG, TIFF).
-   - **`MosaicEngine`**: Multi-threaded parallel solver utilizing Swift Concurrency `TaskGroup`.
-   - **`MosaicProject`**: Lightweight zipped project archiver (`.macosaix`).
-   - **`MosaicRenderer`**: Bounded RAM high-resolution mosaic renderer.
-   - **`MosaicThumbnailCache`**: In-memory and disk caching for source libraries.
-
-3. **`MacOSaiXApp` (SwiftUI + AppKit Application)**:
+2. **`MacOSaiXApp` (Universal SwiftUI Application)**:
    - **`MainWindowView`**: Dual-pane window with top-right action playback bar (`Start`/`Pause`/`Stop`).
    - **`SidebarView`**: Modern controls for target selection, source directories, tile shapes, and matching filters.
    - **`MosaicCanvasView`**: Interactive canvas featuring 2D inertial trackpad glide, pinch-to-zoom, and progressive live assembly.
+   - **`TileDetailPopover.swift`**: Interactive single-tile inspector and instant candidate substitution.
 
-4. **`macosaix-cli` (Command-Line Tool)**:
+3. **`macosaix-cli` (Command-Line Tool)**:
    - Headless CLI executable for scripting, batch jobs, and server pipelines.
    - Built-in physical RAM pre-flight safety check to protect against memory exhaustion.
 
@@ -58,7 +56,5 @@ swift build -c release
 ### Bundle the macOS App
 ```bash
 bash scripts/bundle_app.sh
-open "../MacOSaiX Remake.app"
+open "../MosaicLab.app"
 ```
-
-For complete usage instructions, algorithm explanations, and CLI options, see [**MANUAL.md**](../MANUAL.md).

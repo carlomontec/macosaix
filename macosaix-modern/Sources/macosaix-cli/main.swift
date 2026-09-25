@@ -4,12 +4,12 @@ import MacOSaiXKit
 
 func printUsage() {
     print("""
-    MacOSaiX Remake CLI v3.0.0 (Apple Silicon Native)
-    A modern remake of Frank M. Midgley's classic Mac photomosaic software.
-    Revived and rebuilt with AI-assisted coding by Carlo Monjaraz-Tec (2026).
+    MosaicLab CLI v1.0.0 (Apple Silicon Native)
+    A tool for creating high-resolution photomosaics using modern image processing algorithms.
+    Engineered by Carlo Monjaraz-Tec (2026). Inspired by classic MacOSaiX.
     
     Usage:
-      macosaix-cli --target <image> --sources <folder> [options]
+      mosaiclab-cli --target <image> --sources <folder> [options]
       
     Options:
       --target <path>        Target image to turn into a mosaic (HEIC, JPEG, PNG, etc.)
@@ -136,7 +136,7 @@ func main() async {
     let outputURL = URL(fileURLWithPath: outputPath)
     
     print("==================================================")
-    print("  MacOSaiX Modern Engine (Option A)")
+    print("  MosaicLab Engine v1.0.0")
     print("==================================================")
     print("Target:        \(targetURL.lastPathComponent)")
     print("Sources dir:   \(sourcesURL.path)")

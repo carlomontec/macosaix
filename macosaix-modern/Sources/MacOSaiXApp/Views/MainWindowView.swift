@@ -40,7 +40,7 @@ public struct MainWindowView: View {
                 }) {
                     Image(systemName: "info.circle")
                 }
-                .help("About MacOSaiX Remake")
+                .help("About MosaicLab")
             }
             
             ToolbarItem(placement: .principal) {

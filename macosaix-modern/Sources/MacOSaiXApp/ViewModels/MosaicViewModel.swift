@@ -828,24 +828,30 @@ public final class MosaicViewModel: ObservableObject {
         let panel = NSSavePanel()
         panel.canCreateDirectories = true
         var cleanName = currentProjectURL?.deletingPathExtension().lastPathComponent ?? targetImageURL?.deletingPathExtension().lastPathComponent ?? "Mosaic"
-        while cleanName.lowercased().hasSuffix(".macosaix") {
-            cleanName = String(cleanName.dropLast(9))
+        while cleanName.lowercased().hasSuffix(".mosaiclab") || cleanName.lowercased().hasSuffix(".macosaix") {
+            if cleanName.lowercased().hasSuffix(".mosaiclab") {
+                cleanName = String(cleanName.dropLast(10))
+            } else if cleanName.lowercased().hasSuffix(".macosaix") {
+                cleanName = String(cleanName.dropLast(9))
+            }
         }
         panel.nameFieldStringValue = cleanName
-        if let macosaixType = UTType(filenameExtension: "macosaix") {
-            panel.allowedContentTypes = [macosaixType]
+        var types = [UTType]()
+        if let mosaiclabType = UTType(filenameExtension: "mosaiclab") {
+            types.append(mosaiclabType)
         }
+        if let macosaixType = UTType(filenameExtension: "macosaix") {
+            types.append(macosaixType)
+        }
+        panel.allowedContentTypes = types
         panel.prompt = "Save Project"
         
         panel.begin { [weak self] response in
             guard let self = self, response == .OK, let destinationURL = panel.url else { return }
             var finalURL = destinationURL
-            while finalURL.pathExtension.lowercased() == "macosaix",
-                  finalURL.deletingPathExtension().pathExtension.lowercased() == "macosaix" {
-                finalURL = finalURL.deletingPathExtension()
-            }
-            if finalURL.pathExtension.lowercased() != "macosaix" {
-                finalURL = finalURL.appendingPathExtension("macosaix")
+            let ext = finalURL.pathExtension.lowercased()
+            if ext != "mosaiclab" && ext != "macosaix" {
+                finalURL = finalURL.appendingPathExtension("mosaiclab")
             }
             self.saveProject(to: finalURL)
         }
@@ -936,6 +942,9 @@ public final class MosaicViewModel: ObservableObject {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         var types: [UTType] = [.json]
+        if let mosaiclabType = UTType(filenameExtension: "mosaiclab") {
+            types.append(mosaiclabType)
+        }
         if let macosaixType = UTType(filenameExtension: "macosaix") {
             types.append(macosaixType)
         }

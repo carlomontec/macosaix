@@ -18,11 +18,11 @@ public struct AboutView: View {
             
             // Header
             VStack(spacing: 4) {
-                Text("MacOSaiX Remake")
+                Text("MosaicLab")
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                Text("Version 3.0.0 (Apple Silicon Native)")
+                Text("Version 1.0.0 • Apple Silicon Native")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -31,36 +31,36 @@ public struct AboutView: View {
             
             // Description & Credits
             VStack(alignment: .leading, spacing: 14) {
-                Text("A modern Apple Silicon remake of the classic Mac OS X photomosaic creator.")
+                Text("A native tool for creating high-resolution photomosaics using modern computer vision and image processing algorithms.")
                     .font(.callout)
                     .foregroundColor(.primary)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Historical Origins:")
+                    Text("Inspiration:")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)
-                    Text("Original concept, design, and algorithms created by Frank M. Midgley (2002–2007). Widely celebrated as the premier photomosaic creator on classic Mac OS X.")
+                    Text("Inspired by Frank M. Midgley's classic Mac OS X software MacOSaiX (2002–2007).")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Modern Remake:")
+                    Text("Engineering:")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)
-                    Text("Revived and rebuilt by Carlo Monjaraz-Tec (2026) using AI-assisted coding (paired with Google Antigravity). It preserves Frank Midgley's original cubic Bezier jigsaw puzzle mathematics, hexagonal tessellations, and Riemersma perceptual color metrics, upgraded with modern additions:")
+                    Text("Engineered by Carlo Monjaraz-Tec (2026) using native macOS technologies:")
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        bulletPoint("Native Apple HEIC (.heic) photo decoding via ImageIO")
-                        bulletPoint("Multi-threaded asynchronous constraint solver")
-                        bulletPoint("Real-time RAM pre-flight safety guard")
-                        bulletPoint("Modern SwiftUI interface with live progressive canvas")
-                        bulletPoint("Ultra-high-resolution bounded-memory vector exporter")
-                        bulletPoint("AI-assisted development & modern Apple Silicon architecture")
+                        bulletPoint("Adaptive quadtree subdivision (Julia range & color divergence) with 2:1 neighbor balancing")
+                        bulletPoint("Edge-aware directional matching using 8-bin Sobel HOG gradient histograms")
+                        bulletPoint("Reinhard statistical color transfer in OKLab perceptual color space")
+                        bulletPoint("Multi-threaded asynchronous solver with real-time memory safety check")
+                        bulletPoint("Native Apple Photos (PhotoKit) and local folder source pooling")
+                        bulletPoint("Interlocking cubic Bézier jigsaw puzzles, hexagonal, and rectangular tessellations")
                     }
                     .padding(.top, 2)
                     .padding(.leading, 6)

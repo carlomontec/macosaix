@@ -17,7 +17,8 @@ final class MacOSaiXAppDelegate: NSObject, NSApplicationDelegate {
     nonisolated func application(_ sender: NSApplication, openFiles filenames: [String]) {
         for filename in filenames {
             let url = URL(fileURLWithPath: filename)
-            if url.pathExtension.lowercased() == "macosaix" {
+            let ext = url.pathExtension.lowercased()
+            if ext == "mosaiclab" || ext == "macosaix" {
                 Task { @MainActor [weak self] in
                     if let vm = self?.viewModel {
                         vm.openProject(from: url)
@@ -41,12 +42,13 @@ struct MacOSaiXApp: App {
             MainWindowView()
                 .environmentObject(viewModel)
                 .frame(minWidth: 960, minHeight: 650)
-                .navigationTitle(viewModel.currentProjectURL?.lastPathComponent ?? "MacOSaiX Remake")
+                .navigationTitle(viewModel.currentProjectURL?.lastPathComponent ?? "MosaicLab")
                 .onAppear {
                     appDelegate.setViewModel(viewModel)
                 }
                 .onOpenURL { url in
-                    if url.pathExtension.lowercased() == "macosaix" {
+                    let ext = url.pathExtension.lowercased()
+                    if ext == "mosaiclab" || ext == "macosaix" {
                         viewModel.openProject(from: url)
                     }
                 }
@@ -55,7 +57,7 @@ struct MacOSaiXApp: App {
         .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .appInfo) {
-                Button("About MacOSaiX Remake") {
+                Button("About MosaicLab") {
                     viewModel.isAboutPresented = true
                 }
             }

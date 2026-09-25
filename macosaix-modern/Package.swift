@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MacOSaiXModern",
+    name: "MosaicLab",
     platforms: [
         .macOS(.v13),
         .iOS(.v16)
