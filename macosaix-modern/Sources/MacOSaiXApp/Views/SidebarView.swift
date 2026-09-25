@@ -256,16 +256,102 @@ public struct SidebarView: View {
                 
                 // Section 3: Photo Sources
                 GroupBox(label: Label("Photo Sources", systemImage: "photo.stack")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Picker("Provider", selection: $viewModel.sourceMode) {
-                            ForEach(ImageSourceMode.allCases) { mode in
-                                Label(mode.rawValue, systemImage: mode.iconName).tag(mode)
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Source 1: Apple Photos
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Toggle(isOn: $viewModel.useApplePhotos) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "photo.stack")
+                                            .foregroundColor(.accentColor)
+                                        Text("Apple Photos")
+                                            .fontWeight(.medium)
+                                    }
+                                }
+                                .toggleStyle(.checkbox)
+                                .disabled(viewModel.isRunning)
+                                
+                                Spacer()
+                                
+                                if viewModel.useApplePhotos && viewModel.isPhotosAuthorized {
+                                    Button(action: {
+                                        viewModel.refreshPhotosAuthorization()
+                                    }) {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(viewModel.isRunning || viewModel.isLoadingPhotos)
+                                    .help("Refresh Photos library")
+                                }
+                            }
+                            
+                            if viewModel.useApplePhotos {
+                                if !viewModel.isPhotosAuthorized {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text("Photos access is required to use images from your Photos library.")
+                                            .font(.caption2)
+                                            .foregroundColor(.secondary)
+                                        Button("Connect Photos Library") {
+                                            viewModel.requestPhotosAccess()
+                                        }
+                                        .controlSize(.small)
+                                        .buttonStyle(.borderedProminent)
+                                    }
+                                    .padding(8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                            .fill(Color.accentColor.opacity(0.08))
+                                    )
+                                } else {
+                                    HStack {
+                                        Text("Album:")
+                                            .font(.caption)
+                                        Spacer()
+                                        Picker("", selection: $viewModel.selectedAlbumID) {
+                                            ForEach(viewModel.availableAlbums) { album in
+                                                Label("\(album.title) (\(album.count))", systemImage: album.iconName)
+                                                    .tag(album.id)
+                                            }
+                                        }
+                                        .pickerStyle(.menu)
+                                        .disabled(viewModel.isRunning || viewModel.isLoadingPhotos)
+                                    }
+                                    
+                                    HStack {
+                                        if viewModel.isLoadingPhotos {
+                                            ProgressView().controlSize(.mini)
+                                            Text("Loading album...")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        } else {
+                                            Text("\(viewModel.applePhotosCandidateItems.count) photos in album")
+                                                .font(.caption2)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        Spacer()
+                                    }
+                                }
                             }
                         }
-                        .pickerStyle(.segmented)
-                        .disabled(viewModel.isRunning)
                         
-                        if viewModel.sourceMode == .localFolders {
+                        Divider()
+                        
+                        // Source 2: Local Folders
+                        VStack(alignment: .leading, spacing: 6) {
+                            Toggle(isOn: $viewModel.useLocalFolders) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "folder")
+                                        .foregroundColor(.accentColor)
+                                    Text("Local Folders")
+                                        .fontWeight(.medium)
+                                }
+                            }
+                            .toggleStyle(.checkbox)
+                            .disabled(viewModel.isRunning)
+                            
+                            if viewModel.useLocalFolders {
                             if viewModel.sourceFolders.isEmpty {
                                 Text("No folders added yet.\nDrag & drop folders here or click + Add Folder.")
                                     .font(.caption)
@@ -304,81 +390,27 @@ public struct SidebarView: View {
                                 
                                 Spacer()
                                 
-                                if !viewModel.foundImageURLs.isEmpty {
-                                    Text("\(viewModel.foundImageURLs.count) photos")
+                                if !viewModel.localCandidateItems.isEmpty {
+                                    Text("\(viewModel.localCandidateItems.count) photos")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
                             }
-                        } else if viewModel.sourceMode == .applePhotos {
-                            if !viewModel.isPhotosAuthorized {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "lock.shield")
-                                            .foregroundColor(.accentColor)
-                                        Text("Photos Access Required")
-                                            .font(.caption)
-                                            .fontWeight(.semibold)
-                                    }
-                                    Text("MacOSaiX scans local thumbnail caches with zero network traffic.")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                    
-                                    Button("Connect Photos Library") {
-                                        viewModel.requestPhotosAccess()
-                                    }
-                                    .controlSize(.small)
-                                    .buttonStyle(.borderedProminent)
-                                    .padding(.top, 2)
-                                }
-                                .padding(8)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .fill(Color.accentColor.opacity(0.08))
-                                )
-                            } else {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    HStack {
-                                        Text("Album:")
-                                            .font(.caption)
-                                        Spacer()
-                                        Picker("", selection: $viewModel.selectedAlbumID) {
-                                            ForEach(viewModel.availableAlbums) { album in
-                                                Label("\(album.title) (\(album.count))", systemImage: album.iconName)
-                                                    .tag(album.id)
-                                            }
-                                        }
-                                        .pickerStyle(.menu)
-                                        .disabled(viewModel.isRunning || viewModel.isLoadingPhotos)
-                                    }
-                                    
-                                    HStack {
-                                        if viewModel.isLoadingPhotos {
-                                            ProgressView()
-                                                .controlSize(.mini)
-                                            Text("Loading album...")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        } else {
-                                            Text("\(viewModel.foundImageURLs.count) photos ready")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        Spacer()
-                                        Button(action: {
-                                            viewModel.refreshPhotosAuthorization()
-                                        }) {
-                                            Image(systemName: "arrow.clockwise")
-                                                .font(.caption2)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .disabled(viewModel.isRunning || viewModel.isLoadingPhotos)
-                                        .help("Refresh Photos library albums")
-                                    }
-                                }
-                            }
+                        }
+                    }
+                        
+                        Divider()
+                        
+                        // Pool Summary & Breakdown
+                        HStack {
+                            Text("Total Pool:")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text("\(viewModel.candidateItems.count) photos")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .monospacedDigit()
                         }
                         
                         if !viewModel.formatBreakdownText.isEmpty {
@@ -387,12 +419,12 @@ public struct SidebarView: View {
                                 .foregroundColor(.secondary)
                         }
                         
-                        if !viewModel.foundImageURLs.isEmpty && viewModel.totalTilesCount > 0 && viewModel.foundImageURLs.count < viewModel.totalTilesCount {
+                        if !viewModel.candidateItems.isEmpty && viewModel.totalTilesCount > 0 && viewModel.candidateItems.count < viewModel.totalTilesCount {
                             HStack(alignment: .top, spacing: 6) {
                                 Image(systemName: "lightbulb.fill")
                                     .foregroundColor(.orange)
                                     .font(.caption)
-                                Text("Tip: You have fewer photos (\(viewModel.foundImageURLs.count)) than tiles (\(viewModel.totalTilesCount)). For best results, set Max Reuse to Unlimited and Blend to 15–25%.")
+                                Text("Tip: You have fewer photos (\(viewModel.candidateItems.count)) than tiles (\(viewModel.totalTilesCount)). For best results, set Max Reuse to Unlimited and Blend to 15–25%.")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -415,7 +447,7 @@ public struct SidebarView: View {
                         )
                 )
                 .onDrop(of: [.fileURL], isTargeted: $viewModel.isSourcesDropTargeted) { providers in
-                    viewModel.sourceMode = .localFolders
+                    viewModel.useLocalFolders = true
                     handleDroppedSources(providers)
                     return true
                 }
